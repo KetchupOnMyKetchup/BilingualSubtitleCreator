@@ -1,29 +1,36 @@
 # 🎬 Bulgarian → English Subtitle Project
 
-This project automates the process of **cleaning, translating, and merging Bulgarian subtitles into bilingual subtitle files** alongside movies on a media server.
+This project automates the process of **transcribing, cleaning, translating, and merging Bulgarian / English bilingual subtitles files** alongside video files on a media server and naming them the same as the video file with `.bg.srt` appended so that Jellyfin or similar can pick them up automatically. There are 3 main Python scripts that need to be run sequentially. All of these can be re-run on an existing directory and will check and make sure it doesn't duplicate work or files. 
 
 ---
 
-## 📌 Project Overview
+## 📌 How to Run
 
-- **Input**:  
-  Movie folders containing Bulgarian `.srt` subtitles (named like `BG_movie.srt`).
+### **Transcribe**:  
+  1. Open PowerShell and start the whisper environment - `.\whisper-env\Scripts\activate` so you can run the batch whisper script. 
+        - This will skip the folder if `movie.bg.srt` exists already.
+  2. **[Call Open AI's Whisper Whisper](batch_whisper_missing_bg.py)** — Run through Open AI's Whisper to Transcribe video's audio into Bulgarian subtitles. This will run through your target folder `BASE_DIR` and go into each folder non-recursively. 
 
-- **Process**:  
-  1. **[Batch Whisper](batch_whisper_missing_bg.py)** — Run through Open AI's Whisper to Transcribe video's audio into Bulgarian subtitles
-  2. **[translate_subs.py](translate_subs.py)** — 
-      - This will first call **cleanup_subs.py** — remove tiny/fragmented lines and normalize timing from Bulgarian subtitles 
-      - Then upload cleaned BG subtitles to [translatesubtitles.co](https://translatesubtitles.co) and auto-download English `.srt`.  
-  4. **[Merge](merge_subs.py)** — combine the Bulgarian and English subs into one `.srt` (`movie.bg.srt`), with BG text above and EN text below which can be auto-detected by Jellyfin.
+### **Clean, Translate, and Merge BG/EN subs**:  
+  _(Do the followins steps in regular PowerShell, don't need whisper env). These will run through your target folder `BASE_DIR` and go into each folder non-recursively._
 
-- **Output**:  
+  1. **[Translate & Clean (translate_subs.py)](translate_subs.py)** — Run with `python translate_subs.py` 
+      - This will first call **[cleanup_subs.py](cleanup_subs.py)** — which will remove tiny/fragmented lines and normalize timing from Bulgarian subtitles. There is no need to call this script directly. 
+      - If `BG_clean_*.srt` exists already, it will use the existing file and not create a dupe. 
+      - Then, if `EN_clean_*.srt` does not exist yet, it will upload cleaned BG subtitles to [translatesubtitles.co](https://translatesubtitles.co) and auto-download English `.srt`.  
+  2. **[Merge BG/EN cleaned subtitles (merge_subs.py)](merge_subs.py)** — Run with `python merge_subs.py`.  
+        - This will combine the Bulgarian and English subs into one `.srt` (`movie.bg.srt`), with BG text above and EN text below. 
+        - This will check first that `movie.bg.srt` does not exist before processing.  
+        - Then, it will check that both `BG_clean_*.srt` and `EN_clean_*.srt` exist and have the same number of SRT entries.
+
+### **Output**:  
   Each movie folder ends up with:
   - `BG_clean_*.srt` → cleaned Bulgarian subs  
   - `EN_clean_*.srt` → translated English subs  
   - `movie.bg.srt` → merged bilingual subs  
 
-- **Logging**:  
-  A `/logs` directory is created in the repo where each run’s log is timestamped.
+### **Logging**:  
+  A `/logs` directory is created in the repo where each run’s log is timestamped for the merge step.
 
 ---
 
