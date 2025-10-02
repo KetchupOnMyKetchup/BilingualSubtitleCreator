@@ -62,7 +62,7 @@ def main():
             continue
 
         if has_en_srt(full_path):
-            print(f"⏭ EN_*.srt already exists in {folder}, skipping")
+            print(f"🐱 EN_*.srt already exists in {folder}, skipping")
             continue
 
         # Construct EN_ filename
@@ -86,15 +86,31 @@ def main():
         else:
             print(f"⏩ Using existing cleaned file: {cleaned_srt}")
 
-        # ✅ Skip if cleaned file is empty
+        # ✅🦖 Skip if cleaned file is empty
         if os.path.getsize(cleaned_srt) == 0:
             print(f"⏭ Cleaned file is empty for {folder}, skipping")
             continue
 
-        # Step 2: Translate
-        translate_with_playwright(cleaned_srt, en_srt, full_path)
+        # Step 2: Translate with retry
+        translation_success = False
+        try:
+            translate_with_playwright(cleaned_srt, en_srt, full_path)
+            translation_success = True
+        except Exception as e:
+            print(f"⚠️ Translation failed for {full_path}: {e}")
+            # Retry once if previous translation succeeded for this folder
+            if os.path.exists(en_srt):
+                print(f"🔁 Retrying translation for {full_path}...")
+                try:
+                    translate_with_playwright(cleaned_srt, en_srt, full_path)
+                    translation_success = True
+                except Exception as e2:
+                    print(f"❌ Retry failed for {full_path}: {e2}")
+            else:
+                print(f"⏭ Skipping {full_path}, no prior success to retry.")
 
-        print(f"✅ Saved English subs as {en_srt}")
+        if translation_success:
+            print(f"✅🦖 Saved English subs as {en_srt}")
 
 if __name__ == "__main__":
     main()

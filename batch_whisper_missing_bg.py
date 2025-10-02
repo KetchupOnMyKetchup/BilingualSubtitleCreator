@@ -12,9 +12,14 @@ def has_bg_srt(folder):
     return any(f.lower().startswith("bg_") and f.lower().endswith(".srt") for f in os.listdir(folder))
 
 def get_movie_file(folder):
-    """Return the first movie file found in the folder, or None."""
+    """Return the first movie file found in the folder that is not a sample, or None."""
     for f in os.listdir(folder):
-        if os.path.splitext(f)[1].lower() in VIDEO_EXTENSIONS:
+        ext = os.path.splitext(f)[1].lower()
+        if ext in VIDEO_EXTENSIONS:
+            # Skip sample videos
+            if "sample" in f.lower():
+                print(f"⏭ Skipping sample video: {f}")
+                continue
             return f
     return None
 
