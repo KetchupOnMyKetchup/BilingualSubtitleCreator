@@ -5,7 +5,7 @@ import subprocess
 BASE_DIR = r"\\192.168.1.5\Media\Movies"
 
 # Recognized video extensions
-VIDEO_EXTS = [".mp4", ".avi", ".mkv", ".mov"]
+VIDEO_EXTS = [".mp4", ".avi", ".mkv", ".mov", ".mpg", ".ts"]
 
 def has_bg_srt(folder):
     """Check if a BG_*.srt file exists in this folder."""

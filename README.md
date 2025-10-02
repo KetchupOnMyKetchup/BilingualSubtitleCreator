@@ -10,10 +10,11 @@ This project automates the process of **cleaning, translating, and merging Bulga
   Movie folders containing Bulgarian `.srt` subtitles (named like `BG_movie.srt`).
 
 - **Process**:  
-  1. **Batch Whisper** — Run through Open AI's Whisper to Transcribe video's audio into Bulgarian subtitles
-  2. **Cleanup** — remove tiny/fragmented lines and normalize timing from Bulgarian subtitles.  
-  3. **Translate** — upload cleaned subtitles to [translatesubtitles.co](https://translatesubtitles.co) and auto-download English `.srt`.  
-  4. **Merge** — combine the Bulgarian and English subs into one `.srt` (`movie.bg.srt`), with BG text above and EN text below which can be auto-detected by Jellyfin.
+  1. **[Batch Whisper](batch_whisper_missing_bg.py)** — Run through Open AI's Whisper to Transcribe video's audio into Bulgarian subtitles
+  2. **[translate_subs.py](translate_subs.py)** — 
+      - This will first call **cleanup_subs.py** — remove tiny/fragmented lines and normalize timing from Bulgarian subtitles 
+      - Then upload cleaned BG subtitles to [translatesubtitles.co](https://translatesubtitles.co) and auto-download English `.srt`.  
+  4. **[Merge](merge_subs.py)** — combine the Bulgarian and English subs into one `.srt` (`movie.bg.srt`), with BG text above and EN text below which can be auto-detected by Jellyfin.
 
 - **Output**:  
   Each movie folder ends up with:

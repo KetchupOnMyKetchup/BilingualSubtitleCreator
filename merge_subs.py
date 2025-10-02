@@ -24,7 +24,7 @@ logger = setup_logger()
 
 # ---------- config ----------
 BASE_DIR = r"\\192.168.1.5\Media\Movies"
-VIDEO_EXTENSIONS = (".mp4", ".mkv", ".avi", ".mov")
+VIDEO_EXTS = [".mp4", ".avi", ".mkv", ".mov", ".mpg", ".ts"]
 
 # ---------- helpers ----------
 def find_first_movie(folder):
