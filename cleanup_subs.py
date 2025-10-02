@@ -43,7 +43,7 @@ def clean_srt(input_file, output_file, min_chars=15):
         cleaned.append(new_sub)
 
     cleaned.save(output_file, encoding='utf-8')
-    print(f"✅ Cleaned subtitles saved to {output_file}")
+    print(f"✅🦖 Cleaned subtitles saved to {output_file}")
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:

@@ -5,7 +5,7 @@ import subprocess
 BASE_DIR = r"\\192.168.1.5\Media\Movies"
 
 # Recognized video extensions
-VIDEO_EXTS = [".mp4", ".avi", ".mkv", ".mov", ".mpg", ".ts"]
+VIDEO_EXTENSIONS = [".mp4", ".avi", ".mkv", ".mov", ".mpg", ".ts"]
 
 def has_bg_srt(folder):
     """Check if a BG_*.srt file exists in this folder."""
@@ -14,7 +14,7 @@ def has_bg_srt(folder):
 def get_movie_file(folder):
     """Return the first movie file found in the folder, or None."""
     for f in os.listdir(folder):
-        if os.path.splitext(f)[1].lower() in VIDEO_EXTS:
+        if os.path.splitext(f)[1].lower() in VIDEO_EXTENSIONS:
             return f
     return None
 
@@ -54,7 +54,7 @@ def main():
         default_srt = os.path.splitext(movie_path)[0] + ".srt"
         if os.path.exists(default_srt):
             os.rename(default_srt, srt_output)
-            print(f"✅ Saved subtitles as {srt_output}")
+            print(f"✅🦖 Saved subtitles as {srt_output}")
         else:
             print(f"❌ Whisper did not generate expected file for {movie_file}")
 

@@ -24,7 +24,7 @@ logger = setup_logger()
 
 # ---------- config ----------
 BASE_DIR = r"\\192.168.1.5\Media\Movies"
-VIDEO_EXTS = [".mp4", ".avi", ".mkv", ".mov", ".mpg", ".ts"]
+VIDEO_EXTENSIONS = (".mp4", ".mkv", ".avi", ".mov", ".ts", ".mpg")
 
 # ---------- helpers ----------
 def find_first_movie(folder):
@@ -112,7 +112,7 @@ def process_folder(folder):
     logger.info(f"Processing: {folder}")
     movie_base = find_first_movie(folder)
     if not movie_base:
-        logger.info("  No movie file found — skipping.")
+        logger.info(" ❗❗❗ No movie file found — skipping.")
         return
 
     # create target filename: <movie>.bg.srt
@@ -121,7 +121,7 @@ def process_folder(folder):
 
     # case-insensitive existence check
     if any(f.lower() == output_name.lower() for f in os.listdir(folder)):
-        logger.info(f"  {output_name} already exists — skipping.")
+        logger.info(f" 🐱 {output_name} already exists — skipping.")
         return
 
     # find BG_clean and EN_clean (first match)
@@ -146,7 +146,7 @@ def process_folder(folder):
     try:
         with open(output_path, "w", encoding="utf-8") as out:
             out.write(merged_content)
-        logger.info(f"  ✅ Merged saved: {output_path}")
+        logger.info(f"  ✅🦖 Merged saved: {output_path}")
     except Exception as e:
         logger.error(f"  Could not write merged file: {e}")
 
