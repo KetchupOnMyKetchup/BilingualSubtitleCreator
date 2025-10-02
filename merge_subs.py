@@ -1,94 +1,132 @@
 import os
-import glob
-import datetime
+import logging
+from datetime import datetime
+
+def setup_logger():
+    # Ensure logs directory exists
+    log_dir = os.path.join(os.getcwd(), "logs")
+    os.makedirs(log_dir, exist_ok=True)
+
+    # Create timestamped log filename
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    log_file = os.path.join(log_dir, f"merge_{timestamp}.log")
+
+    # Configure logging to file + console
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(log_file, encoding="utf-8"),
+            logging.StreamHandler()  # print to console
+        ]
+    )
+
+    return logging.getLogger(__name__)
+
+
+logger = setup_logger()
 
 def read_srt(path):
-    """Read an SRT file into blocks, return list of blocks."""
-    with open(path, "r", encoding="utf-8", errors="ignore") as f:
-        content = f.read().strip()
-    if not content:
+    if not os.path.exists(path):
+        logger.warning(f"⚠️ Subtitle file not found: {path}")
         return None
-    blocks = content.split("\n\n")
-    return [b.strip() for b in blocks]
+    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+        return f.read().splitlines()
 
-def merge_subs(bg_file, en_file, output_file):
-    """Merge BG + EN subtitles line by line into one file."""
-    bg_blocks = read_srt(bg_file)
-    en_blocks = read_srt(en_file)
+def merge_subs(bg_lines, en_lines):
+    if len(bg_lines) != len(en_lines):
+        logger.error("❌ Subtitle line counts do not match. Skipping merge.")
+        return None
 
-    if not bg_blocks or not en_blocks:
-        return False, "One of the subtitle files is empty."
+    merged = []
+    i = 0
+    while i < len(bg_lines):
+        line = bg_lines[i]
+        en_line = en_lines[i]
 
-    if len(bg_blocks) != len(en_blocks):
-        return False, f"Subtitle count mismatch ({len(bg_blocks)} vs {len(en_blocks)})"
-
-    merged_blocks = []
-    for bg, en in zip(bg_blocks, en_blocks):
-        bg_lines = bg.splitlines()
-        en_lines = en.splitlines()
-
-        # Ensure indices and timestamps align
-        if len(bg_lines) < 2 or len(en_lines) < 2:
-            return False, "Malformed block(s) found."
-        if bg_lines[0] != en_lines[0] or bg_lines[1] != en_lines[1]:
-            return False, "Mismatch in index/timestamp."
-
-        index = bg_lines[0]
-        timecode = bg_lines[1]
-        bg_text = "\n".join(bg_lines[2:])
-        en_text = "\n".join(en_lines[2:])
-
-        merged_block = f"{index}\n{timecode}\n{bg_text}\n{en_text}"
-        merged_blocks.append(merged_block)
-
-    with open(output_file, "w", encoding="utf-8") as out:
-        out.write("\n\n".join(merged_blocks))
-
-    return True, "Merged successfully."
-
-def process_folders(base_dir, log_file):
-    for root, dirs, files in os.walk(base_dir):
-        # Find first movie file
-        movie_files = [f for f in files if f.lower().endswith((".mp4", ".mkv", ".avi", ".mov"))]
-        if not movie_files:
+        if line.strip().isdigit():
+            # subtitle number
+            merged.append(line)
+            i += 1
             continue
 
-        movie_name = os.path.splitext(movie_files[0])[0]
-        merged_srt = os.path.join(root, f"{movie_name}.bg.srt")
-
-        # Skip if merged already exists
-        if any(f.lower() == f"{movie_name.lower()}.bg.srt" for f in files):
-            log_file.write(f"[SKIP] {root} → {movie_name}.bg.srt already exists.\n")
+        if "-->" in line:
+            # timestamp line
+            merged.append(line)
+            i += 1
             continue
 
-        # Find subtitle files
-        bg_subs = glob.glob(os.path.join(root, "BG_clean*.srt"))
-        en_subs = glob.glob(os.path.join(root, "EN_clean*.srt"))
-
-        if not bg_subs or not en_subs:
-            log_file.write(f"[FAIL] {root} → Missing BG_clean or EN_clean subtitles.\n")
+        if line.strip() == "" and en_line.strip() == "":
+            merged.append("")
+            i += 1
             continue
 
-        bg_file = bg_subs[0]
-        en_file = en_subs[0]
-
-        success, msg = merge_subs(bg_file, en_file, merged_srt)
-        if success:
-            log_file.write(f"[OK]   {root} → Created {os.path.basename(merged_srt)}\n")
+        # Actual subtitle text (merge BG first, then EN)
+        if line.strip() and en_line.strip():
+            merged.append(line)
+            merged.append(en_line)
         else:
-            log_file.write(f"[FAIL] {root} → {msg}\n")
+            merged.append(line or en_line)
+
+        i += 1
+
+    return "\n".join(merged)
+
+
+def process_folder(folder):
+    logger.info(f"📂 Processing folder: {folder}")
+
+    # Find first movie file (any common video extension)
+    video_exts = (".mkv", ".mp4", ".avi", ".mov")
+    movie_file = next((f for f in os.listdir(folder) if f.lower().endswith(video_exts)), None)
+
+    if not movie_file:
+        logger.warning("⚠️ No movie file found, skipping.")
+        return
+
+    movie_name, _ = os.path.splitext(movie_file)
+    output_file = os.path.join(folder, f"{movie_name}.bg.srt")
+
+    # Skip if already exists (case-insensitive check)
+    if any(f.lower() == f"{movie_name.lower()}.bg.srt" for f in os.listdir(folder)):
+        logger.info(f"⏭ {output_file} already exists, skipping.")
+        return
+
+    # Look for BG_clean and EN_clean files
+    bg_file = next((os.path.join(folder, f) for f in os.listdir(folder) if f.startswith("BG_clean") and f.endswith(".srt")), None)
+    en_file = next((os.path.join(folder, f) for f in os.listdir(folder) if f.startswith("EN_clean") and f.endswith(".srt")), None)
+
+    if not bg_file or not en_file:
+        logger.warning("⚠️ Missing BG_clean or EN_clean subtitles, skipping.")
+        return
+
+    logger.info(f"🧹 Found BG: {bg_file}")
+    logger.info(f"🧹 Found EN: {en_file}")
+
+    bg_lines = read_srt(bg_file)
+    en_lines = read_srt(en_file)
+
+    if not bg_lines or not en_lines:
+        logger.warning("⚠️ Could not read one of the subtitle files, skipping.")
+        return
+
+    merged_content = merge_subs(bg_lines, en_lines)
+    if not merged_content:
+        return
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(merged_content)
+
+    logger.info(f"✅ Merged subtitles saved to {output_file}")
+
 
 def main():
-    base_dir = r"\\192.168.1.5\Media\Movies"
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_path = os.path.join(os.getcwd(), f"merge_log_{timestamp}.txt")
+    root_dir = r"\\192.168.1.5\Media\Movies"
+    for foldername in os.listdir(root_dir):
+        full_path = os.path.join(root_dir, foldername)
+        if os.path.isdir(full_path):
+            process_folder(full_path)
 
-    with open(log_path, "w", encoding="utf-8") as log_file:
-        log_file.write(f"Subtitle Merge Log — {datetime.datetime.now()}\n")
-        log_file.write("="*60 + "\n")
-        process_folders(base_dir, log_file)
-
-    print(f"✅ Finished. Log saved to {log_path}")
 
 if __name__ == "__main__":
     main()
