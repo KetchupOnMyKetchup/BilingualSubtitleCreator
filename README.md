@@ -1,4 +1,5 @@
 # 🎬 Bilingual Subtitle Project
+<img width="1145" height="632" alt="image" src="https://github.com/user-attachments/assets/374bb04e-7f51-459a-ac98-bd3d32e7ae66" />
 
 This project automates the process of **transcribing, cleaning, translating, and merging bilingual subtitles files** alongside video files on a media server and naming them the same as the video file with `.<language-shorthand>.srt` for example `bg.srt` appended so that Jellyfin or similar can pick them up automatically. There are 3 main Python scripts that need to be run sequentially. All of these can be re-run on an existing directory and will check and make sure it doesn't duplicate work or files. 
 
@@ -109,3 +110,26 @@ _Note: In the following instructions, I will use the example of transcribing Bul
 ### **Logging**:  
   A `/logs` directory is created in the repo where each run’s log is timestamped for the merge step.
 
+
+This is a sample of what the final .SRT file can look like:
+```
+2
+00:00:30,000 --> 00:00:34,880
+Добре, да опитаме нещо друго.
+Okay, let's try something else.
+
+3
+00:00:38,420 --> 00:00:42,380
+От начало. Готови. Раз, два, три.
+From the beginning. Ready. One, two, three.
+
+4
+00:00:52,120 --> 00:00:56,500
+Раз, два, три, четири. Дръжте ритом.
+One, two, three, four. Keep the rhythm.
+
+5
+00:00:57,200 --> 00:00:59,340
+Два, три, четири.
+Two, three, four.
+```
