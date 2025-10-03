@@ -115,6 +115,8 @@ _Note: In the following instructions, I will use the example of transcribing Bul
 
 ## Samples
 
+<img width="1151" height="632" alt="image" src="https://github.com/user-attachments/assets/2e2e8dae-a006-47d4-9548-92ff7ec0de83" />
+
 This is a sample of what the final .SRT file can look like:
 ```
 2
