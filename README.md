@@ -1,7 +1,9 @@
 # 🎬 Bilingual Subtitle Project
 <img width="1145" height="632" alt="image" src="https://github.com/user-attachments/assets/374bb04e-7f51-459a-ac98-bd3d32e7ae66" />
 
-This project automates the process of **transcribing, cleaning, translating, and merging bilingual subtitles files** alongside video files on a media server and naming them the same as the video file with `.<language-shorthand>.srt` for example `bg.srt` appended so that Jellyfin or similar can pick them up automatically. There are 3 main Python scripts that need to be run sequentially. All of these can be re-run on an existing directory and will check and make sure it doesn't duplicate work or files. 
+This project automates the process of **transcribing, cleaning, translating, and merging bilingual subtitles files** alongside video files on a media server and naming them the same as the video file with `.<language-shorthand>.srt` for example `bg.srt` appended so that Jellyfin or similar can pick them up automatically. 
+- There are 3 main Python scripts that need to be run sequentially. All of these can be re-run on an existing directory and will check and make sure it doesn't duplicate work or files.
+- This will output you 3 subtitle files that you can use with your video, 1 in the language of the video, 1 in your target translated video, and 1 bilingual subtitle with a merge of both languages.
 
 I created this project because I am learning Bulgarian from English, and it helps me a lot to have subtitles that match the spoken audio more closely and a direct translation of those words into English so I can better learn new vocabularly.
 
@@ -9,7 +11,7 @@ _Note: There are, of course, errors and this is far from a perfect transcription
 
 ---
 
-## ⚙️ Environment Setup
+## ⚙️ Environment Setup (Install Python, Playwright, Whisper, and packages)
 
 ### 1. Install Python
 - Install **Python 3.10+** from [python.org](https://www.python.org/downloads/)  
@@ -78,7 +80,7 @@ Options:
 
 ---
 
-## 📌 How to Run
+## 📌 How to Run Scripts
 
 ### **Setup config file**:  
   1. Go to [the configuration file](config.py) and choose your primary and secondary languages. Set the correct ISO codes (like "en", "es", "fr") for LANG_PREFIX. 
@@ -90,20 +92,23 @@ _Note: In the following instructions, I will use the example of transcribing Bul
 ### **Transcribe**:  
   1. Open PowerShell and start the whisper environment - `.\whisper-env\Scripts\activate` so you can run the batch whisper script. 
         - This will skip the folder if `movie.bg.srt` exists already.
-  2. **[Call Open AI's Whisper Whisper](batch_whisper.py)** — Run `.\batch_whisper.py`
-        - Run through Open AI's Whisper to Transcribe video's audio into Bulgarian subtitles. This will run through your target folder `BASE_DIR` and go into each folder non-recursively. 
+  2. Run `.\batch_whisper.py` to **[Call Open AI's Whisper Whisper](batch_whisper.py)**.
+        - Run through Open AI's Whisper to Transcribe video's audio into Bulgarian subtitles. This will run through your target folder `BASE_DIR`.
+        - This could take ~10 mins - 30 mins per 1.5-2 hour video, for example if you are using a fast GPU, longer with CPU or older GPUs.
 
 ### **Clean, Translate, and Merge BG/EN subs**:  
-  _(Do the followins steps in regular PowerShell, don't need whisper env). These will run through your target folder `BASE_DIR` and go into each folder non-recursively._
+  _(Do the following steps in regular PowerShell, don't need whisper env. Or call them with whatever shell or OS you prefer to use). These will run through your target folder `BASE_DIR` and go into each folder non-recursively._
 
-  1. **[Translate & Clean (translate_subs.py)](translate_subs.py)** — Run with `python translate_subs.py` 
+  1. Run with `python translate_subs.py` to **[Translate & Clean (translate_subs.py)](translate_subs.py)** —  
       - This will first call **[cleanup_subs.py](cleanup_subs.py)** — which will remove tiny/fragmented lines and normalize timing from Bulgarian subtitles. There is no need to call this script directly. 
       - If `BG_clean_*.srt` exists already, it will use the existing file and not create a dupe. 
       - Then, if `EN_clean_*.srt` does not exist yet, it will upload cleaned BG subtitles to [translatesubtitles.co](https://translatesubtitles.co) and auto-download English `.srt`.  
-  2. **[Merge BG/EN cleaned subtitles (merge_subs.py)](merge_subs.py)** — Run with `python merge_subs.py`.  
+      - This could take ~1-3 mins per 1.5-2 hour video. It has a high failure rate due to issues uploading to the webpage and sometimes coming up empty or timing out, so don't worry about cancelling and restarting this a few times. 
+  2. Run with `python merge_subs.py` to **[Merge BG/EN cleaned subtitles (merge_subs.py)](merge_subs.py)** —  
         - This will combine the Bulgarian and English subs into one `.srt` (`movie.bg.srt`), with BG text above and EN text below. 
         - This will check first that `movie.bg.srt` does not exist before processing.  
         - Then, it will check that both `BG_clean_*.srt` and `EN_clean_*.srt` exist and have the same number of SRT entries.
+        - This is super fast and can run through 50+ movies in a couple of minutes. 
 
 ### **Logging**:  
   A `/logs` directory is created in the repo where each run’s log is timestamped for the merge step.
