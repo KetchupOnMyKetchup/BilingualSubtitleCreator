@@ -1,52 +1,52 @@
 import os
 import time
 import subprocess
+import config
 from playwright.sync_api import sync_playwright
 
 # Base movies folder
 BASE_DIR = r"\\192.168.1.5\Media\Movies"
 
-def find_bg_srt(folder):
-    """Return path to BG_*.srt file if exists, else None."""
+def find_lang_srt(folder, prefix):
+    """Return path to <prefix>_*.srt file if exists, else None."""
     for f in os.listdir(folder):
-        if f.lower().startswith("bg_") and f.lower().endswith(".srt"):
+        if f.lower().startswith(prefix.lower() + "_") and f.lower().endswith(".srt"):
             return os.path.join(folder, f)
     return None
 
-def has_en_srt(folder):
-    """Check if an EN_*.srt file already exists."""
-    return any(f.lower().startswith("en_") and f.lower().endswith(".srt") for f in os.listdir(folder))
+def has_second_lang_srt(folder, prefix):
+    """Check if a <prefix>_*.srt file already exists."""
+    return any(f.lower().startswith(prefix.lower() + "_") and f.lower().endswith(".srt") for f in os.listdir(folder))
 
-def run_cleanup(bg_srt, cleaned_srt):
-    """Run cleanup_subs.py on the BG file and save as cleaned_srt."""
-    print(f"🧹 Cleaning {bg_srt} -> {cleaned_srt} ...")
-    subprocess.run(["python", "cleanup_subs.py", bg_srt, cleaned_srt], check=True)
+def run_cleanup(src_srt, cleaned_srt):
+    """Run cleanup_subs.py on the source file and save as cleaned_srt."""
+    print(f"🧹 Cleaning {src_srt} -> {cleaned_srt} ...")
+    subprocess.run(["python", "cleanup_subs.py", src_srt, cleaned_srt], check=True)
 
-
-def translate_with_playwright(bg_srt, en_srt, full_path):
+def translate_with_playwright(src_srt, out_srt, full_path):
     with sync_playwright() as p:
-        # Use Chrome instead of default Chromium
         browser = p.chromium.launch(channel="chrome", headless=False)
         page = browser.new_page()
         page.goto("https://translatesubtitles.co")
 
         # Upload subtitle
-        page.set_input_files("input[type=file]", bg_srt)
+        page.set_input_files("input[type=file]", src_srt)
 
-        # Select English in Google Translate dropdown
-        page.select_option("select.goog-te-combo", "en")
-        
-        # Click the correct Translate button
+        # Select target language in dropdown (config.SECOND_LANGUAGE)
+        # NOTE: Google Translate expects lowercase ISO codes (like "en", "es", "fr")
+        page.select_option("select.goog-te-combo", config.SECOND_LANG_PREFIX.lower())
+
+        # Click Translate button
         page.locator("button:has-text('Translate')").first.click()
 
-        # Wait for "Subtitle Translated!" message to actually be visible (green text)
+        # Wait for success message
         page.wait_for_selector("h4.success-msg", state="visible", timeout=300000)
 
         # Download translated file
         with page.expect_download() as download_info:
             page.click("button:has-text('Download')")
         download = download_info.value
-        download.save_as(en_srt)
+        download.save_as(out_srt)
 
         browser.close()
 
@@ -56,37 +56,39 @@ def main():
         if not os.path.isdir(full_path):
             continue
 
-        bg_srt = find_bg_srt(full_path)
-        if not bg_srt:
-            print(f"⏭ No BG_*.srt in {folder}, skipping")
+        # Look for source language subtitles
+        src_srt = find_lang_srt(full_path, config.LANG_PREFIX)
+        if not src_srt:
+            print(f"⏭ No {config.LANG_PREFIX}_*.srt in {folder}, skipping")
             continue
 
-        if has_en_srt(full_path):
-            print(f"🐱 EN_*.srt already exists in {folder}, skipping")
+        # Skip if target language already exists
+        if has_second_lang_srt(full_path, config.SECOND_LANG_PREFIX):
+            print(f"🐱 {config.SECOND_LANG_PREFIX}_*.srt already exists in {folder}, skipping")
             continue
 
-        # Construct EN_ filename
-        filename = os.path.basename(bg_srt)
-        en_srt = os.path.join(full_path, filename.replace("BG_", "EN_clean_", 1).replace("-BG", ""))
+        # Construct output filename (SECOND_LANG)
+        filename = os.path.basename(src_srt)
+        out_srt = os.path.join(
+            full_path,
+            filename.replace(f"{config.LANG_PREFIX}_", f"{config.SECOND_LANG_PREFIX}_clean_", 1)
+                   .replace(f"-{config.LANG_PREFIX}", "")
+        )
 
         # Step 1: Cleanup
-        filename = os.path.basename(bg_srt)
-
-        # If already cleaned, keep name; otherwise add BG_clean_ prefix
-        if filename.startswith("BG_clean_"):
+        if filename.startswith(f"{config.LANG_PREFIX}_clean_"):
             cleaned_srt_name = filename
         else:
-            cleaned_srt_name = filename.replace("BG_", "BG_clean_", 1)
+            cleaned_srt_name = filename.replace(f"{config.LANG_PREFIX}_", f"{config.LANG_PREFIX}_clean_", 1)
 
         cleaned_srt = os.path.join(full_path, cleaned_srt_name)
 
-        # Only clean if the cleaned file doesn't already exist
         if not os.path.exists(cleaned_srt):
-            run_cleanup(bg_srt, cleaned_srt)
+            run_cleanup(src_srt, cleaned_srt)
         else:
             print(f"⏩ Using existing cleaned file: {cleaned_srt}")
 
-        # ✅🦖 Skip if cleaned file is empty
+        # Skip if cleaned file is empty
         if os.path.getsize(cleaned_srt) == 0:
             print(f"⏭ Cleaned file is empty for {folder}, skipping")
             continue
@@ -94,15 +96,14 @@ def main():
         # Step 2: Translate with retry
         translation_success = False
         try:
-            translate_with_playwright(cleaned_srt, en_srt, full_path)
+            translate_with_playwright(cleaned_srt, out_srt, full_path)
             translation_success = True
         except Exception as e:
             print(f"⚠️ Translation failed for {full_path}: {e}")
-            # Retry once if previous translation succeeded for this folder
-            if os.path.exists(en_srt):
+            if os.path.exists(out_srt):
                 print(f"🔁 Retrying translation for {full_path}...")
                 try:
-                    translate_with_playwright(cleaned_srt, en_srt, full_path)
+                    translate_with_playwright(cleaned_srt, out_srt, full_path)
                     translation_success = True
                 except Exception as e2:
                     print(f"❌ Retry failed for {full_path}: {e2}")
@@ -110,7 +111,7 @@ def main():
                 print(f"⏭ Skipping {full_path}, no prior success to retry.")
 
         if translation_success:
-            print(f"✅🦖 Saved English subs as {en_srt}")
+            print(f"✅🦖 Saved {config.SECOND_LANGUAGE} subs as {out_srt}")
 
 if __name__ == "__main__":
     main()

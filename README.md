@@ -1,15 +1,22 @@
-# 🎬 Bulgarian → English Subtitle Project
+# 🎬 Bilingual Subtitle Project
 
-This project automates the process of **transcribing, cleaning, translating, and merging Bulgarian / English bilingual subtitles files** alongside video files on a media server and naming them the same as the video file with `.bg.srt` appended so that Jellyfin or similar can pick them up automatically. There are 3 main Python scripts that need to be run sequentially. All of these can be re-run on an existing directory and will check and make sure it doesn't duplicate work or files. 
+This project automates the process of **transcribing, cleaning, translating, and merging bilingual subtitles files** alongside video files on a media server and naming them the same as the video file with `.<language-shorthand>.srt` for example `bg.srt` appended so that Jellyfin or similar can pick them up automatically. There are 3 main Python scripts that need to be run sequentially. All of these can be re-run on an existing directory and will check and make sure it doesn't duplicate work or files. 
 
 ---
 
 ## 📌 How to Run
+In the following instructions, I will use the example of transcribing Bulgarian (BG) audio movie files into subtitles, then translating them into secondary English (EN) which will be displayed underneath the Bulgarian subtitles. 
+
+### **Setup config file**:  
+  1. Go to [the configuration file](config.py) and choose your primary and secondary languages. Set the correct ISO codes (like "en", "es", "fr") for LANG_PREFIX. 
+  2. Ensure you change the `BASE_DIR` in [the configuration file](config.py) to your desired folder. 
+  3. Choose your "traversal behavior" as well.
 
 ### **Transcribe**:  
   1. Open PowerShell and start the whisper environment - `.\whisper-env\Scripts\activate` so you can run the batch whisper script. 
         - This will skip the folder if `movie.bg.srt` exists already.
-  2. **[Call Open AI's Whisper Whisper](batch_whisper_missing_bg.py)** — Run through Open AI's Whisper to Transcribe video's audio into Bulgarian subtitles. This will run through your target folder `BASE_DIR` and go into each folder non-recursively. 
+  2. **[Call Open AI's Whisper Whisper](batch_whisper.py)** — Run `.\batch_whisper.py`
+        - Run through Open AI's Whisper to Transcribe video's audio into Bulgarian subtitles. This will run through your target folder `BASE_DIR` and go into each folder non-recursively. 
 
 ### **Clean, Translate, and Merge BG/EN subs**:  
   _(Do the followins steps in regular PowerShell, don't need whisper env). These will run through your target folder `BASE_DIR` and go into each folder non-recursively._

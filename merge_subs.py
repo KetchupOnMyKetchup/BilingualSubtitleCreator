@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+import config
 from datetime import datetime
 
 # ---------- logging setup ----------
@@ -22,15 +23,11 @@ def setup_logger():
 
 logger = setup_logger()
 
-# ---------- config ----------
-BASE_DIR = r"\\192.168.1.5\Media\Movies"
-VIDEO_EXTENSIONS = (".mp4", ".mkv", ".avi", ".mov", ".ts", ".mpg")
-
 # ---------- helpers ----------
 def find_first_movie(folder):
     """Return first movie filename (no extension) or None"""
     for f in os.listdir(folder):
-        if f.lower().endswith(VIDEO_EXTENSIONS):
+        if f.lower().endswith(tuple(config.VIDEO_EXTENSIONS)):
             return os.path.splitext(f)[0]
     return None
 
@@ -42,10 +39,7 @@ def find_sub_by_prefix(folder, prefix):
     return None
 
 def read_srt_blocks(path):
-    """
-    Parse an .srt into a list of blocks: [{'index','time','text'}...]
-    Returns [] if file exists but empty, or None if file missing/unreadable.
-    """
+    """Parse an .srt into blocks or None if unreadable"""
     if not os.path.exists(path):
         logger.warning(f"Subtitle file missing: {path}")
         return None
@@ -58,14 +52,12 @@ def read_srt_blocks(path):
     if not raw:
         return []
 
-    # split on blank line (handles CRLF and LF)
     blocks = re.split(r'\r?\n\s*\r?\n', raw)
     out = []
     for b in blocks:
         lines = b.splitlines()
         if len(lines) < 2:
-            # malformed block
-            out.append({'index': None, 'time': None, 'text': "\n".join(lines[2:]).strip() if len(lines)>2 else ""})
+            out.append({'index': None, 'time': None, 'text': "\n".join(lines[2:]).strip() if len(lines) > 2 else ""})
             continue
         idx = lines[0].strip()
         timecode = lines[1].strip()
@@ -73,72 +65,68 @@ def read_srt_blocks(path):
         out.append({'index': idx, 'time': timecode, 'text': text})
     return out
 
-def merge_blocks(bg_blocks, en_blocks):
-    """Given parsed blocks from BG and EN, validate and merge them; returns merged string or (None, reason)."""
-    if bg_blocks is None or en_blocks is None:
+def merge_blocks(primary_blocks, secondary_blocks):
+    """Merge two subtitle tracks"""
+    if primary_blocks is None or secondary_blocks is None:
         return None, "One of the subtitle files could not be read."
-    if len(bg_blocks) == 0 or len(en_blocks) == 0:
+    if len(primary_blocks) == 0 or len(secondary_blocks) == 0:
         return None, "One of the subtitle files is empty."
-    if len(bg_blocks) != len(en_blocks):
-        return None, f"subtitle count mismatch ({len(bg_blocks)} vs {len(en_blocks)})"
+    if len(primary_blocks) != len(secondary_blocks):
+        return None, f"subtitle count mismatch ({len(primary_blocks)} vs {len(secondary_blocks)})"
 
     merged_blocks = []
-    for i, (bg, en) in enumerate(zip(bg_blocks, en_blocks), start=1):
-        # Basic index/time validation (some files use different numbering style; we require match)
-        if bg.get('index') is None or en.get('index') is None:
+    for i, (p, s) in enumerate(zip(primary_blocks, secondary_blocks), start=1):
+        if p.get('index') is None or s.get('index') is None:
             return None, f"malformed block at position {i}"
-        if bg['index'] != en['index']:
-            return None, f"index mismatch at block {i}: {bg['index']} vs {en['index']}"
-        if bg['time'] != en['time']:
-            return None, f"timecode mismatch at block {i}: {bg['time']} vs {en['time']}"
+        if p['index'] != s['index']:
+            return None, f"index mismatch at block {i}: {p['index']} vs {s['index']}"
+        if p['time'] != s['time']:
+            return None, f"timecode mismatch at block {i}: {p['time']} vs {s['time']}"
 
-        # Merge texts: BG first, then EN (skip empty bodies gracefully)
-        bg_text = bg['text'] or ""
-        en_text = en['text'] or ""
-        if bg_text and en_text:
-            merged_text = f"{bg_text}\n{en_text}"
+        # merge texts: primary first, then secondary
+        primary_text = p['text'] or ""
+        secondary_text = s['text'] or ""
+        if primary_text and secondary_text:
+            merged_text = f"{primary_text}\n{secondary_text}"
         else:
-            merged_text = bg_text or en_text
+            merged_text = primary_text or secondary_text
 
-        # Build block
-        merged_block = f"{bg['index']}\n{bg['time']}\n{merged_text}"
+        merged_block = f"{p['index']}\n{p['time']}\n{merged_text}"
         merged_blocks.append(merged_block)
 
-    merged_content = "\n\n".join(merged_blocks) + "\n"  # trailing newline
-    return merged_content, "ok"
+    return "\n\n".join(merged_blocks) + "\n", "ok"
 
-# ---------- main processing ----------
+# ---------- main ----------
 def process_folder(folder):
     logger.info(f"Processing: {folder}")
     movie_base = find_first_movie(folder)
     if not movie_base:
-        logger.info(" ❗❗❗ No movie file found — skipping.")
+        logger.info(" ❗ No movie file found — skipping.")
         return
 
-    # create target filename: <movie>.bg.srt
-    output_name = f"{movie_base}.bg.srt"
+    # output file: <movie>.<langprefix>.srt (lowercase prefix)
+    output_name = f"{movie_base}.{config.LANG_PREFIX.lower()}.srt"
     output_path = os.path.join(folder, output_name)
 
-    # case-insensitive existence check
     if any(f.lower() == output_name.lower() for f in os.listdir(folder)):
         logger.info(f" 🐱 {output_name} already exists — skipping.")
         return
 
-    # find BG_clean and EN_clean (first match)
-    bg_file = find_sub_by_prefix(folder, "BG_clean")
-    en_file = find_sub_by_prefix(folder, "EN_clean")
+    # find cleaned subtitle files
+    primary_file = find_sub_by_prefix(folder, f"{config.LANG_PREFIX}_clean")
+    secondary_file = find_sub_by_prefix(folder, f"{config.SECOND_LANG_PREFIX}_clean")
 
-    if not bg_file or not en_file:
-        logger.warning("  Missing BG_clean or EN_clean subtitle — skipping.")
+    if not primary_file or not secondary_file:
+        logger.warning(f"  Missing {config.LANG_PREFIX}_clean or {config.SECOND_LANG_PREFIX}_clean subtitle — skipping.")
         return
 
-    logger.info(f"  Found BG: {os.path.basename(bg_file)}")
-    logger.info(f"  Found EN: {os.path.basename(en_file)}")
+    logger.info(f"  Found {config.LANG_PREFIX}: {os.path.basename(primary_file)}")
+    logger.info(f"  Found {config.SECOND_LANG_PREFIX}: {os.path.basename(secondary_file)}")
 
-    bg_blocks = read_srt_blocks(bg_file)
-    en_blocks = read_srt_blocks(en_file)
+    primary_blocks = read_srt_blocks(primary_file)
+    secondary_blocks = read_srt_blocks(secondary_file)
 
-    merged_content, status = merge_blocks(bg_blocks, en_blocks)
+    merged_content, status = merge_blocks(primary_blocks, secondary_blocks)
     if merged_content is None:
         logger.error(f"  Failed to merge: {status}")
         return
@@ -152,12 +140,12 @@ def process_folder(folder):
 
 def main():
     logger.info("=== Subtitle merge run started ===")
-    if not os.path.isdir(BASE_DIR):
-        logger.error(f"Base dir not found: {BASE_DIR}")
+    if not os.path.isdir(config.BASE_DIR):
+        logger.error(f"Base dir not found: {config.BASE_DIR}")
         return
 
-    for entry in os.listdir(BASE_DIR):
-        full = os.path.join(BASE_DIR, entry)
+    for entry in os.listdir(config.BASE_DIR):
+        full = os.path.join(config.BASE_DIR, entry)
         if os.path.isdir(full):
             try:
                 process_folder(full)
