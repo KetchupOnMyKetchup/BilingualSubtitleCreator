@@ -4,10 +4,6 @@ This project automates the process of **transcribing, cleaning, translating, and
 
 ---
 
-## 📌 How to Run
-In the following instructions, I will use the example of transcribing Bulgarian (BG) audio movie files into subtitles, then translating them into secondary English (EN) which will be displayed underneath the Bulgarian subtitles. 
-
-
 ## ⚙️ Environment Setup
 
 ### 1. Install Python
@@ -75,10 +71,16 @@ Options:
     - Your NVIDIA drivers are up to date.
     - You have a compatible GPU (CUDA-enabled).
 
+---
+
+## 📌 How to Run
+
 ### **Setup config file**:  
   1. Go to [the configuration file](config.py) and choose your primary and secondary languages. Set the correct ISO codes (like "en", "es", "fr") for LANG_PREFIX. 
   2. Ensure you change the `BASE_DIR` in [the configuration file](config.py) to your desired folder. 
   3. Choose your "traversal behavior" as well.
+
+_Note: In the following instructions, I will use the example of transcribing Bulgarian (BG) audio movie files into subtitles, then translating them into secondary English (EN) which will be displayed underneath the Bulgarian subtitles._
 
 ### **Transcribe**:  
   1. Open PowerShell and start the whisper environment - `.\whisper-env\Scripts\activate` so you can run the batch whisper script. 
