@@ -3,6 +3,10 @@
 
 This project automates the process of **transcribing, cleaning, translating, and merging bilingual subtitles files** alongside video files on a media server and naming them the same as the video file with `.<language-shorthand>.srt` for example `bg.srt` appended so that Jellyfin or similar can pick them up automatically. There are 3 main Python scripts that need to be run sequentially. All of these can be re-run on an existing directory and will check and make sure it doesn't duplicate work or files. 
 
+I created this project because I am learning Bulgarian from English, and it helps me a lot to have subtitles that match the spoken audio more closely and a direct translation of those words into English so I can better learn new vocabularly.
+
+_Note: There are, of course, errors and this is far from a perfect transcription or translation but I'd say it gets you ~80-90% of the way there for movies with clear diction and little background noise. Some known errors include: adding subs when there is no speech, sub dupes, getting the wrong words when the audio is murky/hard to hear/accented/robotic, difficulty with handling transcriptions in songs, subtitles that are too long from run-on sentences, etc._
+
 ---
 
 ## ⚙️ Environment Setup
@@ -101,23 +105,25 @@ _Note: In the following instructions, I will use the example of transcribing Bul
         - This will check first that `movie.bg.srt` does not exist before processing.  
         - Then, it will check that both `BG_clean_*.srt` and `EN_clean_*.srt` exist and have the same number of SRT entries.
 
-### **Output**:  
-  Each movie folder ends up with:
-  - `BG_clean_*.srt` → cleaned Bulgarian subs  
-  - `EN_clean_*.srt` → translated English subs  
-  - `movie.bg.srt` → merged bilingual subs  
-
 ### **Logging**:  
   A `/logs` directory is created in the repo where each run’s log is timestamped for the merge step.
 
-
 ---
 
-## Samples
+### **Output & Sample Subtitle Files Generated**:  
+  Each movie folder ends up with:
+  - `BG_*.srt` → raw Bulgarian subs
+    - For example - [BG_Soul 2020.srt](<Samples/BG_Soul 2020.srt>)
+  - `BG_clean_*.srt` → cleaned Bulgarian subs  
+      - For example - [EN_clean_Soul 2020.srt](<Samples/EN_clean_Soul 2020.srt>)
+  - `EN_clean_*.srt` → translated English subs  
+      - For example - [EN_clean_Soul 2020.srt](<Samples/EN_clean_Soul 2020.srt>)
+  - `movie.bg.srt` → merged bilingual subs  
+      - For example - [Soul 2020.bg.srt](<Samples/Soul 2020.bg.srt>)
 
 <img width="1151" height="632" alt="image" src="https://github.com/user-attachments/assets/2e2e8dae-a006-47d4-9548-92ff7ec0de83" />
 
-This is a sample of what the final .SRT file can look like:
+This is a sample of what the final .SRT file can look like [Soul 2020.bg.srt](<Samples/Soul 2020.bg.srt>) and a small snippet is below:
 ```
 2
 00:00:30,000 --> 00:00:34,880
