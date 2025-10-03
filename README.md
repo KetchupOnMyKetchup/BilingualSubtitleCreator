@@ -1,6 +1,8 @@
 # 🎬 Bilingual Subtitle Project
 <img width="1145" height="632" alt="image" src="https://github.com/user-attachments/assets/374bb04e-7f51-459a-ac98-bd3d32e7ae66" />
 
+Are you learning a language and do you have a video file in a foreign language with no subtitles but you want dual subtitles in both the target language and your language?
+
 This project automates the process of **transcribing, cleaning, translating, and merging bilingual subtitles files** alongside video files on a media server and naming them the same as the video file with `.<language-shorthand>.srt` for example `bg.srt` appended so that Jellyfin or similar can pick them up automatically. 
 - There are 3 main Python scripts that need to be run sequentially. All of these can be re-run on an existing directory and will check and make sure it doesn't duplicate work or files.
 - This will output you 3 subtitle files that you can use with your video, 1 in the language of the video, 1 in your target translated video, and 1 bilingual subtitle with a merge of both languages.

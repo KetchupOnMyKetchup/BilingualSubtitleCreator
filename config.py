@@ -23,3 +23,13 @@ SECOND_LANG_PREFIX = "EN"
 SCAN_FILES_IN_BASEDIR = False   # True = scan video files in BASE_DIR itself, False = skip them
 RECURSIVE = False              # True = recurse into subfolders of subfolders, False = only top-level subfolders
 PROCESS_ONE_PER_FOLDER = True  # True = process only first valid video per folder, False = process all
+
+# Fallback folder for saving .srt if target folder fails
+FALLBACK_SRT_DIR = r"C:\Users\caten\Desktop"
+
+# Folder exclusion list (can be substrings or exact names)
+EXCLUDE_FOLDERS = [
+    "Stargate Atlantis",
+    "Stargate SG-1",
+    "Stargate Universe"
+]
