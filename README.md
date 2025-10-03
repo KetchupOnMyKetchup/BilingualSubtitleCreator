@@ -111,6 +111,10 @@ _Note: In the following instructions, I will use the example of transcribing Bul
   A `/logs` directory is created in the repo where each run’s log is timestamped for the merge step.
 
 
+---
+
+## Samples
+
 This is a sample of what the final .SRT file can look like:
 ```
 2
