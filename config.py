@@ -1,7 +1,8 @@
 # config.py
 
 # Path to your Movies folder
-BASE_DIR = r"\\192.168.1.5\Media\Movies"
+# BASE_DIR = r"\\192.168.1.5\Media\Movies"
+BASE_DIR = r"\\192.168.1.5\Media\TV Shows"
 
 # Recognized video extensions
 VIDEO_EXTENSIONS = [".mp4", ".avi", ".mkv", ".mov", ".mpg", ".ts"]
@@ -21,8 +22,8 @@ SECOND_LANG_PREFIX = "EN"
 
 # Traversal behavior
 SCAN_FILES_IN_BASEDIR = False   # True = scan video files in BASE_DIR itself, False = skip them
-RECURSIVE = False              # True = recurse into subfolders of subfolders, False = only top-level subfolders
-PROCESS_ONE_PER_FOLDER = True  # True = process only first valid video per folder, False = process all
+RECURSIVE = True              # True = recurse into subfolders of subfolders, False = only top-level subfolders
+PROCESS_ONE_PER_FOLDER = False  # True = process only first valid video per folder, False = process all
 
 # Fallback folder for saving .srt if target folder fails
 FALLBACK_SRT_DIR = r"C:\Users\caten\Desktop"
@@ -31,5 +32,6 @@ FALLBACK_SRT_DIR = r"C:\Users\caten\Desktop"
 EXCLUDE_FOLDERS = [
     "Stargate Atlantis",
     "Stargate SG-1",
-    "Stargate Universe"
+    "Stargate Universe",
+    "Avatar.The.Last.Airbender.S01-S03.TVRIP.x264.BGAUDiO-GOD"
 ]
