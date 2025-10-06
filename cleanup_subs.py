@@ -44,15 +44,9 @@ def clean_srt(input_file, output_file, min_chars=15):
     # --- PHASE 2: Timing adjustments ---
     MIN_GAP = 0.2  # sec between lines
     MIN_DURATION = 0.4  # sec per subtitle
-    DRIFT_SMOOTHING = 0.00003  # gradual drift compensation factor per ms gap issue
-
-    drift_offset = 0.0  # cumulative drift correction
 
     for i in range(len(cleaned)):
         sub = cleaned[i]
-
-        # Apply gradual drift correction (helps stabilize long movies)
-        sub.shift(seconds=drift_offset)
 
         # Ensure minimum duration
         duration = sub.end.ordinal - sub.start.ordinal
@@ -66,22 +60,13 @@ def clean_srt(input_file, output_file, min_chars=15):
 
             # If overlap, push it forward
             if gap < 0:
-                shift = abs(gap) + MIN_GAP
-                sub.shift(seconds=shift)
-                drift_offset += shift * DRIFT_SMOOTHING  # accumulate drift awareness
-
+                sub.shift(seconds=abs(gap) + MIN_GAP)
             # If too close (< MIN_GAP), nudge it forward slightly
             elif gap < MIN_GAP:
-                shift = MIN_GAP - gap
-                sub.shift(seconds=shift)
-                drift_offset += shift * DRIFT_SMOOTHING
-
-        # Optional: drift correction reset if stable for long
-        if i % 50 == 0 and abs(drift_offset) > 0.1:
-            drift_offset *= 0.5  # dampen correction over time
+                sub.shift(seconds=MIN_GAP - gap)
 
     cleaned.save(output_file, encoding='utf-8')
-    print(f"✅🦖 Cleaned & timing-corrected subtitles saved to {output_file}")
+    print(f"✅🦖 Cleaned subtitles saved to {output_file}")
 
 
 if __name__ == "__main__":
