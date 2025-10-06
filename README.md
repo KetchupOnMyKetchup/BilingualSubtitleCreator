@@ -28,33 +28,7 @@ pip --version
 ### 2. Install Required Packages
 - `pip install pysrt playwright torch torchvision torchaudio`
 
-### 3. Enable GPU for Whisper (if using Whisper later)
-
-Install PyTorch with CUDA matching your GPU/driver:
-👉 Find the correct install command at PyTorch.org
-.
-
-Example for CUDA 12.1:
-
-`pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121`
-
-
-Verify GPU is recognized:
-```
-import torch
-print(torch.cuda.is_available())   # should be True
-print(torch.cuda.get_device_name(0))
-```
-
-### 4. Install Playwright Browsers
-```
-playwright install
-playwright install-deps
-```
-
-This ensures Chrome/Chromium is available for automation.
-
-### 5. Install OpenAI Whisper for GPU
+### 3. Install OpenAI Whisper for GPU
 
 1. Install Whisper via pip:
 ```bash
@@ -79,6 +53,43 @@ Options:
     - You installed PyTorch with CUDA (matching your GPU & driver version).
     - Your NVIDIA drivers are up to date.
     - You have a compatible GPU (CUDA-enabled).
+
+### 4. Install Faster Whisper for GPU
+1. Run:
+```
+.\whisper-env\Scripts\activate
+pip install "faster-whisper[all]"
+python -c "from faster_whisper import WhisperModel; print('Faster-Whisper installed!')"
+```
+
+### 5. Install Playwright Browsers
+```
+.\whisper-env\Scripts\activate
+pip install playwright
+playwright install
+playwright install-deps
+```
+
+This ensures Chrome/Chromium is available for automation.
+
+### 6. Enable GPU for Whisper
+
+Install PyTorch with CUDA matching your GPU/driver:
+👉 Find the correct install command at PyTorch.org
+.
+
+Example for CUDA 12.1:
+
+`pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121`
+
+
+Verify GPU is recognized:
+```
+import torch
+print(torch.cuda.is_available())   # should be True
+print(torch.cuda.get_device_name(0))
+```
+
 
 ---
 
