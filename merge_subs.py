@@ -87,6 +87,12 @@ def merge_blocks(primary_blocks, secondary_blocks):
 
 # ---------- main ----------
 def process_folder(folder):
+    """Merge matching BG_clean and EN_clean subtitles in one folder."""
+    folder_name = os.path.basename(folder)
+    if folder_name in getattr(config, "EXCLUDE_FOLDERS", []):
+        logger.info(f"🚫 Skipping excluded folder: {folder_name}")
+        return
+
     logger.info(f"Processing folder: {folder}")
 
     bg_clean_files = find_subs_by_prefix(folder, f"{config.LANG_PREFIX}_clean")
@@ -146,12 +152,13 @@ def main():
         return
 
     # Optionally scan base directory
-    if config.SCAN_FILES_IN_BASEDIR:
+    if getattr(config, "SCAN_FILES_IN_BASEDIR", False):
         process_folder(config.BASE_DIR)
 
     # Recursive or flat scan
-    if config.RECURSIVE:
+    if getattr(config, "RECURSIVE", False):
         for root, dirs, files in os.walk(config.BASE_DIR):
+            dirs[:] = [d for d in dirs if d not in getattr(config, "EXCLUDE_FOLDERS", [])]
             for d in dirs:
                 folder_path = os.path.join(root, d)
                 try:
@@ -161,11 +168,13 @@ def main():
     else:
         for entry in os.listdir(config.BASE_DIR):
             full = os.path.join(config.BASE_DIR, entry)
-            if os.path.isdir(full):
+            if os.path.isdir(full) and entry not in getattr(config, "EXCLUDE_FOLDERS", []):
                 try:
                     process_folder(full)
                 except Exception as e:
                     logger.exception(f"Unhandled error processing {full}: {e}")
+            elif entry in getattr(config, "EXCLUDE_FOLDERS", []):
+                logger.info(f"🚫 Skipping excluded top-level folder: {entry}")
 
     logger.info("=== Subtitle merge run finished ===")
 

@@ -99,6 +99,11 @@ def process_movie(folder_path, movie_file):
 
 def process_folder(folder_path):
     """Process all movie files in one folder."""
+    folder_name = os.path.basename(folder_path)
+    if folder_name in getattr(config, "EXCLUDE_FOLDERS", []):
+        print(f"🚫 Skipping excluded folder: {folder_name}")
+        return
+
     print(f"\n📂 Processing folder: {folder_path}")
     movie_files = find_movie_files(folder_path)
 
@@ -110,19 +115,28 @@ def process_folder(folder_path):
         process_movie(folder_path, movie_file)
 
 def main():
+    exclude_list = set(getattr(config, "EXCLUDE_FOLDERS", []))
+
     # Optional: scan base dir directly
-    if config.SCAN_FILES_IN_BASEDIR:
+    if config.SCAN_FILES_IN_BASEDIR and os.path.basename(config.BASE_DIR) not in exclude_list:
         print(f"📂 Scanning base directory: {config.BASE_DIR}")
         process_folder(config.BASE_DIR)
+    elif os.path.basename(config.BASE_DIR) in exclude_list:
+        print(f"🚫 Base directory {config.BASE_DIR} is excluded — skipping.")
 
     # Recursive or flat scan
     if config.RECURSIVE:
         for root, dirs, files in os.walk(config.BASE_DIR):
+            # Filter excluded dirs before walking deeper
+            dirs[:] = [d for d in dirs if d not in exclude_list]
             for d in dirs:
                 folder_path = os.path.join(root, d)
                 process_folder(folder_path)
     else:
         for folder in os.listdir(config.BASE_DIR):
+            if folder in exclude_list:
+                print(f"🚫 Skipping excluded folder: {folder}")
+                continue
             full_path = os.path.join(config.BASE_DIR, folder)
             if os.path.isdir(full_path):
                 process_folder(full_path)
