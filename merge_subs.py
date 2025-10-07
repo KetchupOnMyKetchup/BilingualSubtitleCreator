@@ -103,15 +103,15 @@ def process_folder(folder):
         return
 
     # Build dict for fast matching
-    en_dict = {os.path.basename(f).lower().replace(f"{config.SECOND_LANG_PREFIX.lower()}_clean_", ""): f for f in en_clean_files}
+    en_dict = {os.path.basename(f).replace(f"{config.SECOND_LANG_PREFIX}_clean_", ""): f for f in en_clean_files}
 
     for bg_file in bg_clean_files:
         bg_name = os.path.basename(bg_file)
-        rest = bg_name.lower().replace(f"{config.LANG_PREFIX.lower()}_clean_", "", 1)
-        movie_base = os.path.splitext(rest)[0]
+        rest = bg_name.replace(f"{config.LANG_PREFIX}_clean_", "", 1)
+        movie_base = os.path.splitext(rest)[0]  # keep original casing
 
         # Skip "sample" files
-        if "sample" in movie_base:
+        if "sample" in movie_base.lower():
             logger.info(f" ⏭ Skipping sample file: {movie_base}")
             continue
 
@@ -121,8 +121,8 @@ def process_folder(folder):
             logger.warning(f" ⚠ No matching EN_clean for {bg_name}")
             continue
 
-        # Output name (movie.<lang>.srt)
-        output_name = f"{movie_base}.{config.LANG_PREFIX.lower()}.srt"
+        # Output name = same as video file (without _clean)
+        output_name = f"{movie_base}.srt"
         output_path = os.path.join(folder, output_name)
 
         if os.path.exists(output_path):

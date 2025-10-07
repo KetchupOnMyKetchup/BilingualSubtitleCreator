@@ -1,3 +1,4 @@
+# DO NOT run this file directly, translate_subs.py will call this
 import pysrt
 import sys
 import config  # Make sure config.py has CHARS_PER_SECOND, MIN_DURATION, MAX_DURATION, MIN_GAP, etc.
@@ -80,7 +81,7 @@ def clean_srt(input_file, output_file):
     if buffer:
         last_sub = subs[-1]
         # Default linger for final subtitle
-        linger = 1.5  # 1-2 seconds linger if nothing follows
+        linger = 2.5  # 2.5 seconds linger if nothing follows
         end_time = last_sub.end + pysrt.SubRipTime(milliseconds=int((config.MIN_DURATION + linger) * 1000))
         if prev_end:
             gap = (end_time.ordinal - prev_end.ordinal) / 1000

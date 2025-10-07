@@ -2,7 +2,7 @@
 # Path & File Settings
 # =========================
 # Base folder for your movies/TV shows
-BASE_DIR = r"\\192.168.1.5\Media\Movies\The Wild Robot"
+BASE_DIR = r"\\192.168.1.5\Media\Movies\Soul"
 # BASE_DIR = r"\\192.168.1.5\Media\TV Shows"
 # BASE_DIR = r"C:\Users\caten\Desktop\Test"
 
