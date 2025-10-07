@@ -1,69 +1,101 @@
 import pysrt
 import sys
+import config  # Make sure config.py has CHARS_PER_SECOND, MIN_DURATION, MAX_DURATION, MIN_GAP, etc.
 
-def clean_srt(input_file, output_file, min_chars=15):
+def clean_srt(input_file, output_file):
+    """
+    Clean and merge subtitles while enforcing min/max duration,
+    lingering for silences, and preventing overlaps.
+    """
     subs = pysrt.open(input_file)
     cleaned = pysrt.SubRipFile()
 
     buffer = ""
     start_time = None
+    prev_end = None
+    i = 1
 
-    # --- PHASE 1: Text merge cleanup ---
-    for sub in subs:
+    for idx, sub in enumerate(subs):
         text = sub.text.strip()
-
         if not text:
-            continue  # skip blank subtitles
+            continue
 
         if start_time is None:
             start_time = sub.start
 
         buffer += (" " if buffer else "") + text
+        flush = False
 
-        # Flush if line is long or ends with punctuation
-        if len(buffer) >= min_chars or text.endswith((".", "?", "!", "…")):
-            new_sub = pysrt.SubRipItem(
-                index=len(cleaned) + 1,
+        # Flush buffer if long enough or ends with punctuation
+        if len(buffer) >= config.MAX_CHARS_PER_LINE or text.endswith((".", "?", "!", "…")):
+            flush = True
+        # Flush if duration too long
+        elif start_time and (sub.end.ordinal - start_time.ordinal) / 1000 >= config.MAX_DURATION:
+            flush = True
+
+        if flush:
+            # Compute reading-based duration
+            reading_time = max(config.MIN_DURATION, len(buffer) / config.CHARS_PER_SECOND)
+
+            # Calculate available gap until next subtitle
+            linger = 0.0
+            if idx + 1 < len(subs):
+                next_start = subs[idx + 1].start
+                gap = (next_start.ordinal - sub.end.ordinal) / 1000
+                # Extend into the empty gap but no more than 2 seconds
+                if gap > 0.3:
+                    linger = min(2.0, gap)
+
+            # Compute tentative end time (current sub end + reading + linger)
+            end_time = sub.end + pysrt.SubRipTime(milliseconds=int((reading_time + linger) * 1000))
+
+            # Do not overlap with next subtitle
+            if idx + 1 < len(subs) and end_time > subs[idx + 1].start:
+                end_time = subs[idx + 1].start - pysrt.SubRipTime(milliseconds=int(config.MIN_GAP * 1000))
+
+            # Ensure no overlap with previous subtitle
+            if prev_end:
+                gap = (end_time.ordinal - prev_end.ordinal) / 1000
+                if gap < config.MIN_GAP:
+                    shift = config.MIN_GAP - gap
+                    start_time = start_time + pysrt.SubRipTime(milliseconds=int(shift * 1000))
+                    end_time = end_time + pysrt.SubRipTime(milliseconds=int(shift * 1000))
+
+            cleaned.append(pysrt.SubRipItem(
+                index=i,
                 start=start_time,
-                end=sub.end,
+                end=end_time,
                 text=buffer.strip()
-            )
-            cleaned.append(new_sub)
+            ))
+
+            if config.VERBOSE:
+                print(f"[{start_time} --> {end_time}] {buffer.strip()}")
+
             buffer = ""
             start_time = None
+            prev_end = end_time
+            i += 1
 
+    # Flush any remaining buffer
     if buffer:
-        new_sub = pysrt.SubRipItem(
-            index=len(cleaned) + 1,
-            start=start_time or subs[-1].start,
-            end=subs[-1].end,
+        last_sub = subs[-1]
+        # Default linger for final subtitle
+        linger = 1.5  # 1-2 seconds linger if nothing follows
+        end_time = last_sub.end + pysrt.SubRipTime(milliseconds=int((config.MIN_DURATION + linger) * 1000))
+        if prev_end:
+            gap = (end_time.ordinal - prev_end.ordinal) / 1000
+            if gap < config.MIN_GAP:
+                end_time = prev_end + pysrt.SubRipTime(milliseconds=int(config.MIN_GAP * 1000))
+
+        cleaned.append(pysrt.SubRipItem(
+            index=i,
+            start=start_time or last_sub.start,
+            end=end_time,
             text=buffer.strip()
-        )
-        cleaned.append(new_sub)
+        ))
 
-    # # --- PHASE 2: Timing adjustments ---
-    # MIN_GAP = 0.2  # sec between lines
-    # MIN_DURATION = 0.4  # sec per subtitle
-
-    # for i in range(len(cleaned)):
-    #     sub = cleaned[i]
-
-    #     # Ensure minimum duration
-    #     duration = sub.end.ordinal - sub.start.ordinal
-    #     if duration < MIN_DURATION * 1000:
-    #         sub.end = sub.start + pysrt.timedelta(seconds=MIN_DURATION)
-
-    #     # Fix overlap or too-small gap with previous
-    #     if i > 0:
-    #         prev = cleaned[i - 1]
-    #         gap = (sub.start.ordinal - prev.end.ordinal) / 1000.0
-
-    #         # If overlap, push it forward
-    #         if gap < 0:
-    #             sub.shift(seconds=abs(gap) + MIN_GAP)
-    #         # If too close (< MIN_GAP), nudge it forward slightly
-    #         elif gap < MIN_GAP:
-    #             sub.shift(seconds=MIN_GAP - gap)
+        if config.VERBOSE:
+            print(f"[{start_time} --> {end_time}] {buffer.strip()}")
 
     cleaned.save(output_file, encoding='utf-8')
     print(f"✅🦖 Cleaned subtitles saved to {output_file}")
