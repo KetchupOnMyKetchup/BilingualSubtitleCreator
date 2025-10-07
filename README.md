@@ -11,7 +11,7 @@ _Note: There are mistakes in the transcription/translation and this is far from 
 
 ### Install Python
 1. Install **Python 3.10+** from [python.org](https://www.python.org/downloads/)  
-1. Run the installer. VERY IMPORTANT: Check the box that says “Add Python 3.x to PATH” at the bottom.
+1. Run the installer. **IMPORTANT:** Check the box that says “Add Python 3.x to PATH” at the bottom, if not add this to PATH manually.
 1. Check that it is installed correctly by running `python --version` and you should see something like `Python 3.13.1`
 
 ### Run setup script
@@ -20,10 +20,7 @@ _Note: There are mistakes in the transcription/translation and this is far from 
 1. Run `.\setup.py`
 
 ### Optional: See if GPU is enabled for Whisper and Faster Whisper
-If you installed PyTorch with CUDA, you can run this to verify the GPU is recognized:
-```
-python -c "import torch; print(torch.cuda.is_available())"
-```
+If you installed PyTorch with CUDA, you can run this to verify the GPU is recognized: `python -c "import torch; print(torch.cuda.is_available())"`
 - True → GPU available
 - False → GPU not detected
 
@@ -33,27 +30,23 @@ python -c "import torch; print(torch.cuda.is_available())"
 1. Navigate to your home directory `cd ~`
 1. Run `.\whisper-env\Scripts\activate` to activate the environment the setup file installed everything into.
 1. Go to [config.py](main/config.py) and change the following:
-  - `BASE_DIR` - the folder of video file(s) you want subtitles for
-  - `FALLBACK_SRT_DIR` - a folder on your local machine to fallback to in case it fails to write subs to your desired folder (this can happen with permissions issues on a network drive, for example)
-  - `EXCLUDE_FOLDERS` - Add the names of any directories you want excluded that are part of `BASE_DIR`
-  - `LANGUAGE` - Language that the video's audio is in
-  - `LANG_PREFIX` - ISO codes for the language that the video's audio is in (like "EN", "ES", "FR")
-  - `SECOND_LANGUAGE` - Language you want to translate into, these are the bottom/secondary subtitles
-  - `SECOND_LANG_PREFIX` - ISO codes for the second language, must be a correct ISO code or translation will not work properly (like "EN", "ES", "FR")
-  - `SCAN_FILES_IN_BASEDIR` - `True` if you want to scan video files inside the `BASE_DIR`, `False` if you want to skip those
-  - `RECURSIVE` - `True` if you want to go into all subfolders of `BASE_DIR`, `False` if you only want top level folders to be searched
-  - `PROCESS_ONE_PER_FOLDER` - `True` if you want to convert only 1 video per folder, the first video found without the word "sample" in it, `False` if you want to convert all videos found per folder without the name "sample"
+    - `BASE_DIR` - the folder of video file(s) you want subtitles for
+    - `FALLBACK_SRT_DIR` - a folder on your local machine to fallback to in case it fails to write subs to your desired folder (this can happen with permissions issues on a network drive, for example)
+    - `EXCLUDE_FOLDERS` - Add the names of any directories you want excluded that are part of `BASE_DIR`
+    - `LANGUAGE` - Language that the video's audio is in
+    - `LANG_PREFIX` - ISO codes for the language that the video's audio is in (like "EN", "ES", "FR")
+    - `SECOND_LANGUAGE` - Language you want to translate into, these are the bottom/secondary subtitles
+    - `SECOND_LANG_PREFIX` - ISO codes for the second language, must be a correct ISO code or translation will not work properly (like "EN", "ES", "FR")
+    - `SCAN_FILES_IN_BASEDIR` - `True` if you want to scan video files inside the `BASE_DIR`, `False` if you want to skip those
+    - `RECURSIVE` - `True` if you want to go into all subfolders of `BASE_DIR`, `False` if you only want top level folders to be searched
+    - `PROCESS_ONE_PER_FOLDER` - `True` if you want to convert only 1 video per folder, the first video found without the word "sample" in it, `False` if you want to convert all videos found per folder without the name "sample"
 1. Navigate to where downloaded your project folder on your machine
 1. Run `.\run.py`
 
 ---
 
-### **Setup config file**:  
-  1. Go to [the configuration file](config.py) and choose your primary and secondary languages. 
-  2. Ensure you change the `BASE_DIR` in [the configuration file](config.py) to your desired folder. 
-  3. Choose your "traversal behavior" as well.
-
-_Note: In the following instructions, I will use the example of transcribing Bulgarian (BG) audio movie files into subtitles, then translating them into secondary English (EN) which will be displayed underneath the Bulgarian subtitles._
+## How to This Project Works
+1. 
 
 ### **Transcribe**:  
   1. Open PowerShell and start the whisper environment - `.\whisper-env\Scripts\activate` so you can run the batch whisper script. 
@@ -75,9 +68,6 @@ _Note: In the following instructions, I will use the example of transcribing Bul
         - This will check first that `movie.bg.srt` does not exist before processing.  
         - Then, it will check that both `BG_clean_*.srt` and `EN_clean_*.srt` exist and have the same number of SRT entries.
         - This is super fast and can run through 50+ movies in a couple of minutes. 
-
-### **Logging**:  
-  A `/logs` directory is created in the repo where each run’s log is timestamped for the merge step.
 
 ---
 
