@@ -30,9 +30,20 @@ python -c "import torch; print(torch.cuda.is_available())"
 ---
 
 ## 📌 How to Run Scripts
-1. Navigate to your project folder on your machine in command line
+1. Navigate to your home directory `cd ~`
 1. Run `.\whisper-env\Scripts\activate` to activate the environment the setup file installed everything into.
-1. Go to [config.py](main/config.py) and change the directories and languages to your chosen ones. Set the correct ISO codes (like "en", "es", "fr") for LANG_PREFIX. 
+1. Go to [config.py](main/config.py) and change the following:
+  - `BASE_DIR` - the folder of video file(s) you want subtitles for
+  - `FALLBACK_SRT_DIR` - a folder on your local machine to fallback to in case it fails to write subs to your desired folder (this can happen with permissions issues on a network drive, for example)
+  - `EXCLUDE_FOLDERS` - Add the names of any directories you want excluded that are part of `BASE_DIR`
+  - `LANGUAGE` - Language that the video's audio is in
+  - `LANG_PREFIX` - ISO codes for the language that the video's audio is in (like "EN", "ES", "FR")
+  - `SECOND_LANGUAGE` - Language you want to translate into, these are the bottom/secondary subtitles
+  - `SECOND_LANG_PREFIX` - ISO codes for the second language, must be a correct ISO code or translation will not work properly (like "EN", "ES", "FR")
+  - `SCAN_FILES_IN_BASEDIR` - `True` if you want to scan video files inside the `BASE_DIR`, `False` if you want to skip those
+  - `RECURSIVE` - `True` if you want to go into all subfolders of `BASE_DIR`, `False` if you only want top level folders to be searched
+  - `PROCESS_ONE_PER_FOLDER` - `True` if you want to convert only 1 video per folder, the first video found without the word "sample" in it, `False` if you want to convert all videos found per folder without the name "sample"
+1. Navigate to where downloaded your project folder on your machine
 1. Run `.\run.py`
 
 ---
