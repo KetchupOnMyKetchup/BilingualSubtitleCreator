@@ -54,34 +54,45 @@ Options:
     - Your NVIDIA drivers are up to date.
     - You have a compatible GPU (CUDA-enabled).
 
-### 4. Install Faster Whisper for GPU
-1. Run:
+### 4. Setup whisper-env. Install Faster Whisper, Playwright, demucs
+1. Go to your project folder.
+2. Run `python -m venv whisper-env`
+3. Run: `.\whisper-env\Scripts\activate` first before the below installs.
+
+Run the below for Faster Whisper for GPU
 ```
-.\whisper-env\Scripts\activate
 pip install "faster-whisper[all]"
 python -c "from faster_whisper import WhisperModel; print('Faster-Whisper installed!')"
 ```
 
-### 5. Install Playwright Browsers
+Run this to install Playwright Browsers
 ```
-.\whisper-env\Scripts\activate
 pip install playwright
 playwright install
 playwright install-deps
 ```
 
-This ensures Chrome/Chromium is available for automation.
+Install demucs
+```
+pip install demucs ffmpeg-python
+conda install -c conda-forge ffmpeg
+```
 
-### 6. Enable GPU for Whisper
+Install others:
+```
+pip install pysrt
+pip show torchaudio
+pip install soundfile
 
-Install PyTorch with CUDA matching your GPU/driver:
-👉 Find the correct install command at PyTorch.org
-.
+```
+
+
+### 5. Enable GPU for Whisper
+
+Install PyTorch with CUDA matching your GPU/driver: 👉 Find the correct install command at PyTorch.org.
 
 Example for CUDA 12.1:
-
 `pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121`
-
 
 Verify GPU is recognized:
 ```
@@ -89,7 +100,6 @@ import torch
 print(torch.cuda.is_available())   # should be True
 print(torch.cuda.get_device_name(0))
 ```
-
 
 ---
 

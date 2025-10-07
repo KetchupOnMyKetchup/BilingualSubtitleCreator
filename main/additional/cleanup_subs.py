@@ -1,7 +1,13 @@
 # DO NOT run this file directly, translate_subs.py will call this
 import pysrt
 import sys
-import config  # Make sure config.py has CHARS_PER_SECOND, MIN_DURATION, MAX_DURATION, MIN_GAP, etc.
+import os
+
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
+
+import config
 
 def clean_srt(input_file, output_file):
     """

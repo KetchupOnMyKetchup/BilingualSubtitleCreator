@@ -2,12 +2,13 @@
 # Path & File Settings
 # =========================
 # Base folder for your movies/TV shows
-BASE_DIR = r"\\192.168.1.5\Media\Movies\Soul"
+BASE_DIR = r"\\192.168.1.5\Media\Movies\Up.2009.BRRip.x265.Dual-DiN"
 # BASE_DIR = r"\\192.168.1.5\Media\TV Shows"
 # BASE_DIR = r"C:\Users\caten\Desktop\Test"
 
 # Recognized video file extensions
 VIDEO_EXTENSIONS = [".mp4", ".avi", ".mkv", ".mov", ".mpg", ".ts", ".webm"]
+AUDIO_EXTENSIONS = [".wav"]
 
 # Folder exclusion list (substrings or exact names)
 EXCLUDE_FOLDERS = [

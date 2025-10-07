@@ -14,16 +14,15 @@ def find_srts_with_prefix(folder, prefix):
 
 def find_movie_files(folder):
     """Return a list of video filenames in the folder."""
-    VIDEO_EXTENSIONS = [".mp4", ".avi", ".mkv", ".mov", ".mpg", ".ts"]
     return [
         f for f in os.listdir(folder)
-        if os.path.splitext(f)[1].lower() in VIDEO_EXTENSIONS
+        if os.path.splitext(f)[1].lower() in config.VIDEO_EXTENSIONS
     ]
 
 def run_cleanup(src_srt, cleaned_srt):
     """Run cleanup_subs.py on the source file and save as cleaned_srt."""
     print(f"🧹 Cleaning {src_srt} -> {cleaned_srt} ...")
-    subprocess.run(["python", "cleanup_subs.py", src_srt, cleaned_srt], check=True)
+    subprocess.run(["python", "main/additional/cleanup_subs.py", src_srt, cleaned_srt], check=True)
 
 def translate_with_playwright(src_srt, out_srt, folder_path):
     """Translate using translatesubtitles.co via Playwright."""

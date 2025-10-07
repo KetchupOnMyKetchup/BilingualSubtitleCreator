@@ -95,7 +95,7 @@ def process_folder(root, files):
 
     for f in files:
         ext = os.path.splitext(f)[1].lower()
-        if ext not in config.VIDEO_EXTENSIONS:
+        if ext not in config.AUDIO_EXTENSIONS:
             continue
         if "sample" in f.lower():
             print(f"🧪 Skipping sample video: {f}")
@@ -105,7 +105,13 @@ def process_folder(root, files):
             continue
 
         movie_path = os.path.join(root, f)
-        srt_output = os.path.join(root, f"{config.LANG_PREFIX}_{os.path.splitext(f)[0]}.srt")
+
+        # Remove '_vocals' if present in the stem
+        stem = os.path.splitext(f)[0]
+        if stem.endswith("_vocals"):
+            stem = stem[:-7]  # Remove last 7 characters
+
+        srt_output = os.path.join(root, f"{config.LANG_PREFIX}_{stem}.srt")
         print(f"🎬 Processing {f} in {root}...")
 
         if config.USE_FASTER_WHISPER:
