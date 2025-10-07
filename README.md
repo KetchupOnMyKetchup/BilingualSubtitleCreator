@@ -105,7 +105,7 @@ _Note: In the following instructions, I will use the example of transcribing Bul
 ### **Transcribe**:  
   1. Open PowerShell and start the whisper environment - `.\whisper-env\Scripts\activate` so you can run the batch whisper script. 
         - This will skip the folder if `movie.bg.srt` exists already.
-  2. Run `.\batch_whisper.py` to **[Call Open AI's Whisper Whisper](batch_whisper.py)**.
+  2. Run `.\transcribe.py` to **[Call Open AI's Whisper Whisper](transcribe.py)**.
         - Run through Open AI's Whisper to Transcribe video's audio into Bulgarian subtitles. This will run through your target folder `BASE_DIR`.
         - This could take ~10 mins - 30 mins per 1.5-2 hour video, for example if you are using a fast GPU, longer with CPU or older GPUs.
 
