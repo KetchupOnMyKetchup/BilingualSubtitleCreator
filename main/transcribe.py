@@ -87,11 +87,23 @@ def process_folder(root, files):
 
     # Initialize Faster-Whisper model if needed
     if config.USE_FASTER_WHISPER:
-        fw_model = WhisperModel(
-            config.WHISPER_MODEL,
-            device=config.WHISPER_DEVICE,
-            compute_type=config.COMPUTE_TYPE
-        )
+        try:
+            fw_model = WhisperModel(
+                config.WHISPER_MODEL,
+                device=config.WHISPER_DEVICE,
+                compute_type=config.COMPUTE_TYPE
+            )
+        except RuntimeError as e:
+            if config.FORCE_CPU_IF_GPU_FAILS:
+                print("⚠️ GPU failed or missing, falling back to CPU...")
+                fw_model = WhisperModel(
+                    config.WHISPER_MODEL,
+                    device="cpu",
+                    compute_type="int8"  # or the lowest precision you want
+                )
+            else:
+                raise e
+
 
     for f in files:
         ext = os.path.splitext(f)[1].lower()

@@ -12,13 +12,20 @@ TWO_STEMS = "vocals"                 # Extract only vocals stem
 # -----------------------------
 
 def get_video_files(base_dir):
-    """Collect video files based on config traversal settings."""
+    """Collect video files based on config traversal settings, skip samples."""
     video_files = []
 
     # Scan BASE_DIR itself if enabled
     if config.SCAN_FILES_IN_BASEDIR:
         for f in os.listdir(base_dir):
+            if "sample" in f.lower():
+                continue
             if os.path.splitext(f)[1].lower() in config.VIDEO_EXTENSIONS:
+                # Skip if vocals already exist
+                vocals_path = Path(base_dir) / f"{Path(f).stem}{AUDIO_OUTPUT_SUFFIX}"
+                if vocals_path.exists():
+                    print(f"⏭ Skipping {f} (vocals already exist)")
+                    continue
                 video_files.append(os.path.join(base_dir, f))
                 if config.PROCESS_ONE_PER_FOLDER:
                     break
@@ -29,7 +36,13 @@ def get_video_files(base_dir):
             # Exclude configured folders
             dirs[:] = [d for d in dirs if d not in getattr(config, "EXCLUDE_FOLDERS", [])]
             for file in files:
+                if "sample" in file.lower():
+                    continue
                 if os.path.splitext(file)[1].lower() in config.VIDEO_EXTENSIONS:
+                    vocals_path = Path(root) / f"{Path(file).stem}{AUDIO_OUTPUT_SUFFIX}"
+                    if vocals_path.exists():
+                        print(f"⏭ Skipping {file} (vocals already exist)")
+                        continue
                     video_files.append(os.path.join(root, file))
                     if config.PROCESS_ONE_PER_FOLDER:
                         break
@@ -43,10 +56,14 @@ def extract_vocals(movie_path):
     output_dir = movie_path.parent
     output_wav = output_dir / f"{movie_path.stem}{AUDIO_OUTPUT_SUFFIX}"
 
+    # Skip if already exists
+    if output_wav.exists():
+        print(f"⏭ Skipping {movie_path.name} (vocals already exist)")
+        return None
+
     print(f"\n🎬 Processing: {movie_path.name}")
     print(f"   → Output: {output_wav.name}")
 
-    # Use a safe temporary working directory (local disk)
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
         try:

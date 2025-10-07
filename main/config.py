@@ -4,11 +4,9 @@
 # Base folder for your movies/TV shows
 BASE_DIR = r"\\192.168.1.5\Media\Movies\Up.2009.BRRip.x265.Dual-DiN"
 # BASE_DIR = r"\\192.168.1.5\Media\TV Shows"
-# BASE_DIR = r"C:\Users\caten\Desktop\Test"
 
-# Recognized video file extensions
-VIDEO_EXTENSIONS = [".mp4", ".avi", ".mkv", ".mov", ".mpg", ".ts", ".webm"]
-AUDIO_EXTENSIONS = [".wav"]
+# Fallback folder for saving .srt if the target folder fails
+FALLBACK_SRT_DIR = r"C:\Users\caten\Desktop"
 
 # Folder exclusion list (substrings or exact names)
 EXCLUDE_FOLDERS = [
@@ -17,10 +15,6 @@ EXCLUDE_FOLDERS = [
     "Stargate Universe",
     "Avatar.The.Last.Airbender.S01-S03.TVRIP.x264.BGAUDiO-GOD"
 ]
-
-# Fallback folder for saving .srt if the target folder fails
-FALLBACK_SRT_DIR = r"C:\Users\caten\Desktop"
-
 
 # =========================
 # Subtitle Language Settings
@@ -33,7 +27,6 @@ LANG_PREFIX = "BG"
 SECOND_LANGUAGE = "English"
 SECOND_LANG_PREFIX = "EN"
 
-
 # =========================
 # Directory Traversal & Processing Behavior
 # =========================
@@ -41,12 +34,18 @@ SCAN_FILES_IN_BASEDIR = True          # Scan video files directly in BASE_DIR
 RECURSIVE = True                       # Recurse into subfolders
 PROCESS_ONE_PER_FOLDER = False         # Only process the first valid video per folder
 
+# =========================
+# Recognized File Extensions
+# =========================
+VIDEO_EXTENSIONS = [".mp4", ".avi", ".mkv", ".mov", ".mpg", ".ts", ".webm"]
+AUDIO_EXTENSIONS = [".wav"]
 
 # =========================
 # Whisper / Transcription Settings
 # =========================
 WHISPER_MODEL = "medium"               # "small", "medium", "large"
 WHISPER_DEVICE = "cuda"                # "cuda", "cpu", etc.
+FORCE_CPU_IF_GPU_FAILS = False  # Set to True to auto-fallback to CPU
 
 # Fine-tuning transcription accuracy
 CONDITION_ON_PREVIOUS_TEXT = True

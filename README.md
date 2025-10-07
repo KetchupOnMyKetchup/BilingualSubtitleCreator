@@ -1,112 +1,44 @@
 # 🎬 Bilingual Subtitle Project
 <img width="1145" height="632" alt="image" src="https://github.com/user-attachments/assets/374bb04e-7f51-459a-ac98-bd3d32e7ae66" />
 
-Are you learning a language and do you have a video file in a foreign language with no subtitles but you want dual subtitles in both the target language and your language?
+Are you learning a language and do you have a video file in a foreign language with no subtitles but you want dual subtitles in both the target language and your language? This project automates the process of **transcribing, cleaning, translating, and merging bilingual subtitles files** alongside video files on a media server and naming them the same as the video file with `.<language-shorthand>.srt` for example `bg.srt` appended (so that Jellyfin or similar can pick them up automatically). 
 
-This project automates the process of **transcribing, cleaning, translating, and merging bilingual subtitles files** alongside video files on a media server and naming them the same as the video file with `.<language-shorthand>.srt` for example `bg.srt` appended so that Jellyfin or similar can pick them up automatically. 
-- There are 3 main Python scripts that need to be run sequentially. All of these can be re-run on an existing directory and will check and make sure it doesn't duplicate work or files.
-- This will output you 3 subtitle files that you can use with your video, 1 in the language of the video, 1 in your target translated video, and 1 bilingual subtitle with a merge of both languages.
-
-I created this project because I am learning Bulgarian from English, and it helps me a lot to have subtitles that match the spoken audio more closely and a direct translation of those words into English so I can better learn new vocabularly.
-
-_Note: There are, of course, errors and this is far from a perfect transcription or translation but I'd say it gets you ~80-90% of the way there for movies with clear diction and little background noise. Some known errors include: adding subs when there is no speech, sub dupes, getting the wrong words when the audio is murky/hard to hear/accented/robotic, difficulty with handling transcriptions in songs, subtitles that are too long from run-on sentences, etc._
+_Note: There are mistakes in the transcription/translation and this is far from a perfect, but I'd say it gets you ~80-90% of the way there for movies._
 
 ---
 
 ## ⚙️ Environment Setup (Install Python, Playwright, Whisper, and packages)
 
-### 1. Install Python
-- Install **Python 3.10+** from [python.org](https://www.python.org/downloads/)  
-- During installation, check **“Add Python to PATH”**
+### Install Python
+1. Install **Python 3.10+** from [python.org](https://www.python.org/downloads/)  
+1. Run the installer. VERY IMPORTANT: Check the box that says “Add Python 3.x to PATH” at the bottom.
+1. Check that it is installed correctly by running `python --version` and you should see something like `Python 3.13.1`
 
-Verify:
-```bash
-python --version
-pip --version
+### Run setup script
+1. Download this project
+1. Navigate to your project folder on your machine in command line
+1. Run `.\setup.py`
+
+### Optional: See if GPU is enabled for Whisper and Faster Whisper
+If you installed PyTorch with CUDA, you can run this to verify the GPU is recognized:
 ```
-
-### 2. Install Required Packages
-- `pip install pysrt playwright torch torchvision torchaudio`
-
-### 3. Install OpenAI Whisper for GPU
-
-1. Install Whisper via pip:
-```bash
-pip install git+https://github.com/openai/whisper.git 
+python -c "import torch; print(torch.cuda.is_available())"
 ```
-
-Ensure you have PyTorch with CUDA installed, so Whisper can use your GPU. Verify:
-```
-import torch
-print(torch.cuda.is_available())   # should return True
-```
-
-Test Whisper with a sample audio file:
-```
-whisper sample.mp3 --model small --device cuda
-```
-
-Options:
-- --device cuda ensures GPU usage.
-- Replace small with other model sizes (tiny, base, medium, large) as needed.
-- ⚠️ If Whisper doesn’t detect the GPU, make sure:
-    - You installed PyTorch with CUDA (matching your GPU & driver version).
-    - Your NVIDIA drivers are up to date.
-    - You have a compatible GPU (CUDA-enabled).
-
-### 4. Setup whisper-env. Install Faster Whisper, Playwright, demucs
-1. Go to your project folder.
-2. Run `python -m venv whisper-env`
-3. Run: `.\whisper-env\Scripts\activate` first before the below installs.
-
-Run the below for Faster Whisper for GPU
-```
-pip install "faster-whisper[all]"
-python -c "from faster_whisper import WhisperModel; print('Faster-Whisper installed!')"
-```
-
-Run this to install Playwright Browsers
-```
-pip install playwright
-playwright install
-playwright install-deps
-```
-
-Install demucs
-```
-pip install demucs ffmpeg-python
-conda install -c conda-forge ffmpeg
-```
-
-Install others:
-```
-pip install pysrt
-pip show torchaudio
-pip install soundfile
-
-```
-
-
-### 5. Enable GPU for Whisper
-
-Install PyTorch with CUDA matching your GPU/driver: 👉 Find the correct install command at PyTorch.org.
-
-Example for CUDA 12.1:
-`pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121`
-
-Verify GPU is recognized:
-```
-import torch
-print(torch.cuda.is_available())   # should be True
-print(torch.cuda.get_device_name(0))
-```
+- True → GPU available
+- False → GPU not detected
 
 ---
 
 ## 📌 How to Run Scripts
+1. Navigate to your project folder on your machine in command line
+1. Run `.\whisper-env\Scripts\activate` to activate the environment the setup file installed everything into.
+1. Go to [config.py](main/config.py) and change the directories and languages to your chosen ones. Set the correct ISO codes (like "en", "es", "fr") for LANG_PREFIX. 
+1. Run `.\run.py`
+
+---
 
 ### **Setup config file**:  
-  1. Go to [the configuration file](config.py) and choose your primary and secondary languages. Set the correct ISO codes (like "en", "es", "fr") for LANG_PREFIX. 
+  1. Go to [the configuration file](config.py) and choose your primary and secondary languages. 
   2. Ensure you change the `BASE_DIR` in [the configuration file](config.py) to your desired folder. 
   3. Choose your "traversal behavior" as well.
 
