@@ -41,29 +41,29 @@ def clean_srt(input_file, output_file, min_chars=15):
         )
         cleaned.append(new_sub)
 
-    # --- PHASE 2: Timing adjustments ---
-    MIN_GAP = 0.2  # sec between lines
-    MIN_DURATION = 0.4  # sec per subtitle
+    # # --- PHASE 2: Timing adjustments ---
+    # MIN_GAP = 0.2  # sec between lines
+    # MIN_DURATION = 0.4  # sec per subtitle
 
-    for i in range(len(cleaned)):
-        sub = cleaned[i]
+    # for i in range(len(cleaned)):
+    #     sub = cleaned[i]
 
-        # Ensure minimum duration
-        duration = sub.end.ordinal - sub.start.ordinal
-        if duration < MIN_DURATION * 1000:
-            sub.end = sub.start + pysrt.timedelta(seconds=MIN_DURATION)
+    #     # Ensure minimum duration
+    #     duration = sub.end.ordinal - sub.start.ordinal
+    #     if duration < MIN_DURATION * 1000:
+    #         sub.end = sub.start + pysrt.timedelta(seconds=MIN_DURATION)
 
-        # Fix overlap or too-small gap with previous
-        if i > 0:
-            prev = cleaned[i - 1]
-            gap = (sub.start.ordinal - prev.end.ordinal) / 1000.0
+    #     # Fix overlap or too-small gap with previous
+    #     if i > 0:
+    #         prev = cleaned[i - 1]
+    #         gap = (sub.start.ordinal - prev.end.ordinal) / 1000.0
 
-            # If overlap, push it forward
-            if gap < 0:
-                sub.shift(seconds=abs(gap) + MIN_GAP)
-            # If too close (< MIN_GAP), nudge it forward slightly
-            elif gap < MIN_GAP:
-                sub.shift(seconds=MIN_GAP - gap)
+    #         # If overlap, push it forward
+    #         if gap < 0:
+    #             sub.shift(seconds=abs(gap) + MIN_GAP)
+    #         # If too close (< MIN_GAP), nudge it forward slightly
+    #         elif gap < MIN_GAP:
+    #             sub.shift(seconds=MIN_GAP - gap)
 
     cleaned.save(output_file, encoding='utf-8')
     print(f"✅🦖 Cleaned subtitles saved to {output_file}")

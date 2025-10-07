@@ -47,6 +47,14 @@ MAX_LINE_COUNT = 2
 MAX_WORDS_PER_LINE = 12
 VERBOSE = True
 
+# =========================
+# Subtitle timing tweaks
+# =========================
+MIN_CHARS = 8                       # Minimum characters before flushing buffer
+MAX_CHARS_PER_LINE = 40             # Maximum characters in a single subtitle line
+MIN_DURATION = 0.3                  # Minimum seconds a subtitle is on screen
+MAX_DURATION = 2.0                  # Maximum seconds a subtitle is on screen
+MIN_GAP = 0.1                        # Minimum gap between consecutive subtitles (seconds)
 
 # Folder exclusion list (can be substrings or exact names)
 EXCLUDE_FOLDERS = [

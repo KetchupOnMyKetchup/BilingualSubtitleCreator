@@ -18,25 +18,6 @@ def folder_is_excluded(folder_name):
             return True
     return False
 
-def transcribe_with_faster_whisper(model, movie_path, output_path):
-    """Use Faster-Whisper to generate SRT."""
-    segments, _ = model.transcribe(
-        movie_path,
-        language=config.LANG_PREFIX.lower(),
-        beam_size=config.BEAM_SIZE,
-        condition_on_previous_text=config.CONDITION_ON_PREVIOUS_TEXT
-    )
-    with open(output_path, "w", encoding="utf-8") as f:
-        for i, segment in enumerate(segments, start=1):
-            start = segment.start
-            end = segment.end
-            text = segment.text.strip()
-            f.write(f"{i}\n{format_timestamp(start)} --> {format_timestamp(end)}\n{text}\n\n")
-
-            # Print to console as well
-            if config.VERBOSE:
-                print(f"[{format_timestamp(start)} --> {format_timestamp(end)}] {text}")
-
 def format_timestamp(seconds):
     """Format seconds into SRT timestamp HH:MM:SS,ms"""
     ms = int((seconds - int(seconds)) * 1000)
@@ -44,6 +25,57 @@ def format_timestamp(seconds):
     m = int((seconds % 3600) // 60)
     s = int(seconds % 60)
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+def transcribe_with_faster_whisper(model, movie_path, output_path):
+    """Use Faster-Whisper to generate SRT with better timing for fast speech."""
+    segments, _ = model.transcribe(
+        movie_path,
+        language=config.LANG_PREFIX.lower(),
+        beam_size=config.BEAM_SIZE,
+        condition_on_previous_text=config.CONDITION_ON_PREVIOUS_TEXT
+    )
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        buffer = ""
+        start_time = None
+
+        for i, segment in enumerate(segments, start=1):
+            text = segment.text.strip()
+            if not text:
+                continue
+
+            if start_time is None:
+                start_time = segment.start
+
+            # Buffer text for short segments to prevent rapid-fire SRTs
+            buffer += (" " if buffer else "") + text
+            flush = False
+
+            if len(buffer) >= config.MAX_CHARS_PER_LINE or text.endswith((".", "?", "!", "…")):
+                flush = True
+            elif segment.end - start_time >= config.MAX_DURATION:
+                flush = True
+
+            if flush:
+                end_time = min(segment.end, start_time + config.MAX_DURATION)
+                duration = end_time - start_time
+                if duration < config.MIN_DURATION:
+                    end_time = start_time + config.MIN_DURATION
+
+                f.write(f"{i}\n{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n{buffer.strip()}\n\n")
+
+                if config.VERBOSE:
+                    print(f"[{format_timestamp(start_time)} --> {format_timestamp(end_time)}] {buffer.strip()}")
+
+                buffer = ""
+                start_time = None
+
+        # Flush any remaining buffer
+        if buffer:
+            last_segment_end = segments[-1].end
+            f.write(f"{i+1}\n{format_timestamp(start_time)} --> {format_timestamp(last_segment_end)}\n{buffer.strip()}\n\n")
+            if config.VERBOSE:
+                print(f"[{format_timestamp(start_time)} --> {format_timestamp(last_segment_end)}] {buffer.strip()}")
 
 def process_folder(root, files):
     """Process movie files inside a folder according to config rules."""
@@ -65,26 +97,21 @@ def process_folder(root, files):
         ext = os.path.splitext(f)[1].lower()
         if ext not in config.VIDEO_EXTENSIONS:
             continue
-
         if "sample" in f.lower():
             print(f"🧪 Skipping sample video: {f}")
             continue
-
         if has_lang_srt_for_movie(root, f):
             print(f"🐱 Skipping {f} ({config.LANG_PREFIX}_*.srt already exists)")
             continue
 
         movie_path = os.path.join(root, f)
         srt_output = os.path.join(root, f"{config.LANG_PREFIX}_{os.path.splitext(f)[0]}.srt")
-
         print(f"🎬 Processing {f} in {root}...")
 
         if config.USE_FASTER_WHISPER:
-            # Use Faster-Whisper
             transcribe_with_faster_whisper(fw_model, movie_path, srt_output)
             print(f"✅🦖 Saved subtitles (Faster-Whisper) as {srt_output}")
         else:
-            # Use standard Whisper CLI
             cmd = [
                 "whisper", movie_path,
                 "--model", config.WHISPER_MODEL,
@@ -99,7 +126,6 @@ def process_folder(root, files):
                 "--output_dir", root
             ]
             subprocess.run(cmd)
-            # Rename/move generated SRT if needed
             default_srt = os.path.splitext(movie_path)[0] + ".srt"
             try:
                 if os.path.exists(default_srt):
@@ -131,7 +157,7 @@ def main():
     if config.RECURSIVE:
         for root, _, files in os.walk(config.BASE_DIR):
             if root == config.BASE_DIR:
-                continue  # already handled
+                continue
             process_folder(root, files)
     else:
         for entry in os.listdir(config.BASE_DIR):
