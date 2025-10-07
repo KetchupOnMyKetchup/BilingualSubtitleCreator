@@ -2,11 +2,11 @@
 # Path & File Settings
 # =========================
 # Base folder for your movies/TV shows
-BASE_DIR = r"\\192.168.1.5\Media\Movies\Up.2009.BRRip.x265.Dual-DiN"
+BASE_DIR = r"\\192.168.1.5\Media\TV Shows\Avatar Test"
 # BASE_DIR = r"\\192.168.1.5\Media\TV Shows"
 
-# Fallback folder for saving .srt if the target folder fails
-FALLBACK_SRT_DIR = r"C:\Users\caten\Desktop"
+# Fallback folder for saving .srt if the target folder fails (use a local folder to ensure this works)
+FALLBACK_SRT_DIR = r"C:\Users\caten\Desktop\Fallback"
 
 # Folder exclusion list (substrings or exact names)
 EXCLUDE_FOLDERS = [
@@ -39,6 +39,7 @@ PROCESS_ONE_PER_FOLDER = False         # Only process the first valid video per 
 # =========================
 VIDEO_EXTENSIONS = [".mp4", ".avi", ".mkv", ".mov", ".mpg", ".ts", ".webm"]
 AUDIO_EXTENSIONS = [".wav"]
+BACKGROUND_SUPPRESSION = True            # Use background noise suppression (Demucs) before transcription
 
 # =========================
 # Whisper / Transcription Settings

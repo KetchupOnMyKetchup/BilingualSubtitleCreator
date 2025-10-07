@@ -1,188 +1,137 @@
 import os
 import subprocess
+from pathlib import Path
 import config
 
-# Optional: import Faster-Whisper only if needed
-if config.USE_FASTER_WHISPER:
-    from faster_whisper import WhisperModel
-
-def has_lang_srt_for_movie(folder, movie_file):
-    """Check if a <LANG_PREFIX>_*.srt file already exists for this movie file."""
-    expected_srt = f"{config.LANG_PREFIX}_{os.path.splitext(movie_file)[0]}.srt"
-    return expected_srt in os.listdir(folder)
-
-def folder_is_excluded(folder_name):
-    """Check if folder name matches any of the exclusion rules."""
-    for excl in config.EXCLUDE_FOLDERS:
-        if excl.lower() in folder_name.lower() or folder_name.lower() == excl.lower():
-            return True
-    return False
-
-def format_timestamp(seconds):
-    """Format seconds into SRT timestamp HH:MM:SS,ms"""
-    ms = int((seconds - int(seconds)) * 1000)
-    h = int(seconds // 3600)
-    m = int((seconds % 3600) // 60)
-    s = int(seconds % 60)
-    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
-
-def transcribe_with_faster_whisper(model, movie_path, output_path):
-    """Use Faster-Whisper to generate SRT with better timing for fast speech."""
-    segments, _ = model.transcribe(
-        movie_path,
-        language=config.LANG_PREFIX.lower(),
-        beam_size=config.BEAM_SIZE,
-        condition_on_previous_text=config.CONDITION_ON_PREVIOUS_TEXT
-    )
-
-    with open(output_path, "w", encoding="utf-8") as f:
-        buffer = ""
-        start_time = None
-
-        for i, segment in enumerate(segments, start=1):
-            text = segment.text.strip()
-            if not text:
-                continue
-
-            if start_time is None:
-                start_time = segment.start
-
-            # Buffer text for short segments to prevent rapid-fire SRTs
-            buffer += (" " if buffer else "") + text
-            flush = False
-
-            if len(buffer) >= config.MAX_CHARS_PER_LINE or text.endswith((".", "?", "!", "…")):
-                flush = True
-            elif segment.end - start_time >= config.MAX_DURATION:
-                flush = True
-
-            if flush:
-                end_time = min(segment.end, start_time + config.MAX_DURATION)
-                duration = end_time - start_time
-                if duration < config.MIN_DURATION:
-                    end_time = start_time + config.MIN_DURATION
-
-                f.write(f"{i}\n{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n{buffer.strip()}\n\n")
-
-                if config.VERBOSE:
-                    print(f"[{format_timestamp(start_time)} --> {format_timestamp(end_time)}] {buffer.strip()}")
-
-                buffer = ""
-                start_time = None
-
-        # Flush any remaining buffer
-        if buffer:
-            last_segment_end = segments[-1].end
-            f.write(f"{i+1}\n{format_timestamp(start_time)} --> {format_timestamp(last_segment_end)}\n{buffer.strip()}\n\n")
-            if config.VERBOSE:
-                print(f"[{format_timestamp(start_time)} --> {format_timestamp(last_segment_end)}] {buffer.strip()}")
-
-def process_folder(root, files):
-    """Process movie files inside a folder according to config rules."""
-    processed_one = False
-
-    if folder_is_excluded(os.path.basename(root)):
-        print(f"⛔ Skipping excluded folder: {root}")
-        return False
-
-    # Initialize Faster-Whisper model if needed
-    if config.USE_FASTER_WHISPER:
-        try:
-            fw_model = WhisperModel(
-                config.WHISPER_MODEL,
-                device=config.WHISPER_DEVICE,
-                compute_type=config.COMPUTE_TYPE
-            )
-        except RuntimeError as e:
-            if config.FORCE_CPU_IF_GPU_FAILS:
-                print("⚠️ GPU failed or missing, falling back to CPU...")
-                fw_model = WhisperModel(
-                    config.WHISPER_MODEL,
-                    device="cpu",
-                    compute_type="int8"  # or the lowest precision you want
-                )
-            else:
-                raise e
+MODEL_SIZE = "medium"
+LANGUAGE = "bg"
+OUTPUT_PREFIX = f"{LANGUAGE.upper()}_"  # Optional prefix for SRTs
 
 
-    for f in files:
-        ext = os.path.splitext(f)[1].lower()
-        if ext not in config.AUDIO_EXTENSIONS:
-            continue
-        if "sample" in f.lower():
-            print(f"🧪 Skipping sample video: {f}")
-            continue
-        if has_lang_srt_for_movie(root, f):
-            print(f"🐱 Skipping {f} ({config.LANG_PREFIX}_*.srt already exists)")
-            continue
+def has_existing_srt(movie_path):
+    """Check if an SRT for this file already exists."""
+    movie_path = Path(movie_path)
+    # Strip "_vocals" if present in stem
+    stem = movie_path.stem
+    if stem.endswith("_vocals"):
+        stem = stem[:-7]
+    srt_name = f"{OUTPUT_PREFIX}{stem}.srt"
+    srt_path = movie_path.with_name(srt_name)
+    return srt_path.exists()
 
-        movie_path = os.path.join(root, f)
 
-        # Remove '_vocals' if present in the stem
-        stem = os.path.splitext(f)[0]
-        if stem.endswith("_vocals"):
-            stem = stem[:-7]  # Remove last 7 characters
+def transcribe_audio(movie_path):
+    """Run Whisper/Faster-Whisper directly in the movie folder."""
+    movie_path = Path(movie_path)
+    output_dir = movie_path.parent
+    # Use original stem for output
+    stem = movie_path.stem
+    if stem.endswith("_vocals"):
+        stem = stem[:-7]
+    srt_name = f"{OUTPUT_PREFIX}{stem}.srt"
+    srt_path = output_dir / srt_name
 
-        srt_output = os.path.join(root, f"{config.LANG_PREFIX}_{stem}.srt")
-        print(f"🎬 Processing {f} in {root}...")
-
-        if config.USE_FASTER_WHISPER:
-            transcribe_with_faster_whisper(fw_model, movie_path, srt_output)
-            print(f"✅🦖 Saved subtitles (Faster-Whisper) as {srt_output}")
-        else:
-            cmd = [
-                "whisper", movie_path,
-                "--model", config.WHISPER_MODEL,
-                "--device", config.WHISPER_DEVICE,
-                "--language", config.LANGUAGE,
-                "--condition_on_previous_text", str(config.CONDITION_ON_PREVIOUS_TEXT),
-                "--initial_prompt", "",
-                "--carry_initial_prompt", str(config.CARRY_INITIAL_PROMPT),
-                "--no_speech_threshold", str(config.NO_SPEECH_THRESHOLD),
-                "--output_format", "srt",
-                "--temperature", str(config.TEMPERATURE),
-                "--output_dir", root
-            ]
-            subprocess.run(cmd)
-            default_srt = os.path.splitext(movie_path)[0] + ".srt"
+    if has_existing_srt(movie_path):
+        print(f"⏭ Skipping {movie_path.name} (SRT already exists)")
+        # Delete _vocals.wav if SRT exists
+        if movie_path.name.endswith("_vocals.wav"):
             try:
-                if os.path.exists(default_srt):
-                    os.rename(default_srt, srt_output)
-                    print(f"✅🦖 Saved subtitles (Whisper) as {srt_output}")
-                else:
-                    print(f"❌ Whisper did not generate expected file for {f}")
-            except PermissionError:
-                fallback_path = os.path.join(config.FALLBACK_SRT_DIR, f"{config.LANG_PREFIX}_{os.path.splitext(f)[0]}.srt")
-                os.makedirs(config.FALLBACK_SRT_DIR, exist_ok=True)
-                os.rename(default_srt, fallback_path)
-                print(f"⚠️ Could not save in target folder, saved to fallback: {fallback_path}")
+                movie_path.unlink()
+                print(f"🗑️ Deleted existing {movie_path.name}")
+            except Exception as e:
+                print(f"⚠️ Could not delete {movie_path.name}: {e}")
+        return
 
-        if config.PROCESS_ONE_PER_FOLDER:
-            processed_one = True
+    print(f"\n🎞️ Processing: {movie_path.name}")
+
+    cmd = [
+        "whisper",
+        str(movie_path),
+        "--model", MODEL_SIZE,
+        "--language", LANGUAGE,
+        "--output_format", "srt",
+        "--output_dir", str(output_dir)
+    ]
+
+    try:
+        print(f"🎬 Transcribing {movie_path.name} ...")
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Transcription failed for {movie_path.name}: {e}")
+        return
+    except Exception as e:
+        print(f"❌ Unexpected error while transcribing {movie_path.name}: {e}")
+        return
+
+    # Whisper sometimes outputs without prefix
+    possible_outputs = [
+        srt_path,
+        output_dir / f"{movie_path.stem}.srt"
+    ]
+
+    found_srt = False
+    for path in possible_outputs:
+        if path.exists():
+            if path.name != srt_name:
+                new_path = output_dir / srt_name
+                os.rename(path, new_path)
+                srt_path = new_path
+            print(f"✅🦖 Saved subtitles as {srt_path}")
+            found_srt = True
             break
 
-    return processed_one
+    if not found_srt:
+        print(f"⚠️ Could not find SRT output for {movie_path.name}")
+        return
+
+    # Delete _vocals.wav after successful transcription
+    if movie_path.name.endswith("_vocals.wav"):
+        try:
+            movie_path.unlink()
+            print(f"🗑️ Deleted {movie_path.name} after transcription")
+        except Exception as e:
+            print(f"⚠️ Could not delete {movie_path.name}: {e}")
+
+
+def collect_files(base_dir):
+    """
+    Collect all files to transcribe depending on config.BACKGROUND_SUPPRESSION:
+    - True: only *_vocals.wav
+    - False: only video files
+    """
+    targets = []
+    for root, dirs, files in os.walk(base_dir):
+        dirs[:] = [d for d in dirs if d not in getattr(config, "EXCLUDE_FOLDERS", [])]
+
+        for f in files:
+            ext = os.path.splitext(f)[1].lower()
+            full_path = os.path.join(root, f)
+
+            if config.BACKGROUND_SUPPRESSION:
+                if ext == ".wav" and f.endswith("_vocals.wav"):
+                    targets.append(full_path)
+            else:
+                if ext in [".mp4", ".mkv", ".mov", ".avi"]:
+                    targets.append(full_path)
+
+    return sorted(targets)
+
 
 def main():
-    # Step 1: optionally process BASE_DIR itself
-    if config.SCAN_FILES_IN_BASEDIR:
-        files = os.listdir(config.BASE_DIR)
-        process_folder(config.BASE_DIR, files)
-    else:
-        print("⏭ Skipping files in BASE_DIR itself")
+    base_dir = Path(config.BASE_DIR)
+    if not base_dir.exists():
+        print(f"❌ BASE_DIR not found: {base_dir}")
+        return
 
-    # Step 2: process subfolders
-    if config.RECURSIVE:
-        for root, _, files in os.walk(config.BASE_DIR):
-            if root == config.BASE_DIR:
-                continue
-            process_folder(root, files)
-    else:
-        for entry in os.listdir(config.BASE_DIR):
-            full_path = os.path.join(config.BASE_DIR, entry)
-            if os.path.isdir(full_path):
-                files = os.listdir(full_path)
-                process_folder(full_path, files)
+    files = collect_files(base_dir)
+    if not files:
+        print("⚠️ No supported files found.")
+        return
+
+    print(f"🎥 Found {len(files)} file(s) to transcribe.")
+    for file in files:
+        transcribe_audio(file)
+
 
 if __name__ == "__main__":
     main()
