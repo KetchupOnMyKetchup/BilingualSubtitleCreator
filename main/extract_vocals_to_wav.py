@@ -32,8 +32,6 @@ def get_video_files(base_dir):
                     print(f"⏭ Skipping {f} (SRT already exists)")
                     continue
                 video_files.append(str(movie_path))
-                if config.PROCESS_ONE_PER_FOLDER:
-                    break
 
     # Recursively scan subfolders if enabled
     if config.RECURSIVE:
@@ -48,8 +46,6 @@ def get_video_files(base_dir):
                         print(f"⏭ Skipping {file} (SRT already exists)")
                         continue
                     video_files.append(str(movie_path))
-                    if config.PROCESS_ONE_PER_FOLDER:
-                        break
 
     return sorted(set(video_files))
 
@@ -102,21 +98,25 @@ def extract_vocals(movie_path):
 
 
 def main():
-    base_dir = Path(config.BASE_DIR)
-    if not base_dir.exists():
-        print(f"❌ BASE_DIR not found: {base_dir}")
-        return
+    if config.BACKGROUND_SUPPRESSION:
+        print("🎧 Background suppression is ENABLED (Demucs will be used), .wav file will be temporarily created.")
 
-    video_files = get_video_files(base_dir)
-    if not video_files:
-        print("⚠️ No movie files found or all already have SRTs.")
-        return
+        base_dir = Path(config.BASE_DIR)
+        if not base_dir.exists():
+            print(f"❌ BASE_DIR not found: {base_dir}")
+            return
 
-    print(f"🎞️ Found {len(video_files)} movie(s) to process.")
+        video_files = get_video_files(base_dir)
+        if not video_files:
+            print("⚠️ No movie files found or all already have SRTs.")
+            return
 
-    for movie in video_files:
-        extract_vocals(movie)
+        print(f"🎞️ Found {len(video_files)} movie(s) to process.")
 
+        for movie in video_files:
+            extract_vocals(movie)
+    else:
+        print("⚠️ Background suppression is DISABLED. No .wav file will be created and transcribe will happen directly from video file.")
 
 if __name__ == "__main__":
     main()

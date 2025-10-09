@@ -27,19 +27,19 @@ def install_packages():
     # Torch + torchaudio — try CUDA first, fallback to CPU
     try:
         print("\n🚀 Installing PyTorch + torchaudio with CUDA (if available)...")
-        run([pip_path, "install", "torch", "torchaudio", "--index-url", "https://download.pytorch.org/whl/cu121"])
+        run([pip_path, "install", "--no-cache-dir", "torch", "torchaudio", "--index-url", "https://download.pytorch.org/whl/cu121"])
     except subprocess.CalledProcessError:
         print("\n⚙️ CUDA install failed, installing CPU-only PyTorch instead.")
-        run([pip_path, "install", "torch", "torchaudio", "--index-url", "https://download.pytorch.org/whl/cpu"])
+        run([pip_path, "install", "--no-cache-dir", "torch", "torchaudio", "--index-url", "https://download.pytorch.org/whl/cpu"])
 
     # Whisper + Faster Whisper + pysrt
-    run([pip_path, "install", "openai-whisper", "faster-whisper", "pysrt"])
+    run([pip_path, "install", "--no-cache-dir", "openai-whisper", "faster-whisper", "pysrt", "pydub"])
 
-    # Demucs (latest compatible prebuilt wheel, avoid diffq build failure)
-    run([pip_path, "install", "demucs"])
+    # Demucs
+    run([pip_path, "install", "--no-cache-dir", "demucs"])
 
     # Utilities
-    run([pip_path, "install", "numpy", "ffmpeg-python", "tqdm", "pydub", "langdetect", "googletrans==4.0.0-rc1"])
+    run([pip_path, "install", "--no-cache-dir", "numpy", "ffmpeg-python", "tqdm", "pydub", "langdetect", "googletrans==4.0.0-rc1"])
 
     print("\n✅ All dependencies installed successfully!")
 

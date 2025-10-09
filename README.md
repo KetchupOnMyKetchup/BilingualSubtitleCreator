@@ -39,7 +39,6 @@ If you installed PyTorch with CUDA, you can run this to verify the GPU is recogn
     - `SECOND_LANG_PREFIX` - ISO codes for the second language, must be a correct ISO code or translation will not work properly (like "EN", "ES", "FR")
     - `SCAN_FILES_IN_BASEDIR` - `True` if you want to scan video files inside the `BASE_DIR`, `False` if you want to skip those
     - `RECURSIVE` - `True` if you want to go into all subfolders of `BASE_DIR`, `False` if you only want top level folders to be searched
-    - `PROCESS_ONE_PER_FOLDER` - `True` if you want to convert only 1 video per folder, the first video found without the word "sample" in it, `False` if you want to convert all videos found per folder without the name "sample"
 1. Navigate to where downloaded your project folder on your machine
 1. Run `.\run.py`
 
