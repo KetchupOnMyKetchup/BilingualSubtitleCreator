@@ -17,7 +17,7 @@ _Note: There are mistakes in the transcription/translation and this is far from 
 ### Run setup script
 1. Download this project
 1. Navigate to your project folder on your machine in command line
-1. Run `.\setup.py`
+1. Run `.\setup.py`. _Note this is an unfinished project and I tried my best to get everything into the setup, I'm sorry if anything is missing from it, please open a PR if you find something missing._
 
 ### Optional: See if GPU is enabled for Whisper and Faster Whisper
 If you installed PyTorch with CUDA, you can run this to verify the GPU is recognized: `python -c "import torch; print(torch.cuda.is_available())"`
@@ -31,7 +31,6 @@ If you installed PyTorch with CUDA, you can run this to verify the GPU is recogn
 1. Run `.\whisper-env\Scripts\activate` to activate the environment the setup file installed everything into.
 1. Go to [config.py](main/config.py) and change the following:
     - `BASE_DIR` - the folder of video file(s) you want subtitles for
-    - `FALLBACK_SRT_DIR` - a folder on your local machine to fallback to in case it fails to write subs to your desired folder (this can happen with permissions issues on a network drive, for example)
     - `EXCLUDE_FOLDERS` - Add the names of any directories you want excluded that are part of `BASE_DIR`
     - `LANGUAGE` - Language that the video's audio is in
     - `LANG_PREFIX` - ISO codes for the language that the video's audio is in (like "EN", "ES", "FR")
@@ -44,46 +43,41 @@ If you installed PyTorch with CUDA, you can run this to verify the GPU is recogn
 
 ---
 
-## How to This Project Works
-1. 
 
-### **Transcribe**:  
-  1. Open PowerShell and start the whisper environment - `.\whisper-env\Scripts\activate` so you can run the batch whisper script. 
-        - This will skip the folder if `movie.bg.srt` exists already.
-  2. Run `.\transcribe.py` to **[Call Open AI's Whisper Whisper](transcribe.py)**.
-        - Run through Open AI's Whisper to Transcribe video's audio into Bulgarian subtitles. This will run through your target folder `BASE_DIR`.
-        - This could take ~10 mins - 30 mins per 1.5-2 hour video, for example if you are using a fast GPU, longer with CPU or older GPUs.
 
-### **Clean, Translate, and Merge BG/EN subs**:  
-  _(Do the following steps in regular PowerShell, don't need whisper env. Or call them with whatever shell or OS you prefer to use). These will run through your target folder `BASE_DIR` and go into each folder non-recursively._
+## How This Project Works & Output Example
 
-  1. Run with `python translate_subs.py` to **[Translate & Clean (translate_subs.py)](translate_subs.py)** —  
-      - This will first call **[cleanup_subs.py](cleanup_subs.py)** — which will remove tiny/fragmented lines and normalize timing from Bulgarian subtitles. There is no need to call this script directly. 
-      - If `BG_clean_*.srt` exists already, it will use the existing file and not create a dupe. 
-      - Then, if `EN_clean_*.srt` does not exist yet, it will upload cleaned BG subtitles to [translatesubtitles.co](https://translatesubtitles.co) and auto-download English `.srt`.  
-      - This could take ~1-3 mins per 1.5-2 hour video. It has a high failure rate due to issues uploading to the webpage and sometimes coming up empty or timing out, so don't worry about cancelling and restarting this a few times. 
-  2. Run with `python merge_subs.py` to **[Merge BG/EN cleaned subtitles (merge_subs.py)](merge_subs.py)** —  
-        - This will combine the Bulgarian and English subs into one `.srt` (`movie.bg.srt`), with BG text above and EN text below. 
-        - This will check first that `movie.bg.srt` does not exist before processing.  
-        - Then, it will check that both `BG_clean_*.srt` and `EN_clean_*.srt` exist and have the same number of SRT entries.
-        - This is super fast and can run through 50+ movies in a couple of minutes. 
+The main workflow is orchestrated by `run.py`, which calls the following scripts in order _(note in the following examples: Primary video audio language is Bulgarian (BG) getting translated into the Secondary language English)_:
 
----
+1. **extract_vocals_to_wav.py**
+    - Extracts the vocal track from each video file using Demucs (if background suppression is enabled) in order to remove background music and noises and get a clearer audio file of just speech.
+    - Produces a `_vocals.wav` file for each video, which is used for transcription.
 
-### **Output & Sample Subtitle Files Generated**:  
-  Each movie folder ends up with:
-  - `BG_*.srt` → raw Bulgarian subs
-    - For example - [BG_Soul 2020.srt](<Samples/BG_Soul 2020.srt>)
-  - `BG_clean_*.srt` → cleaned Bulgarian subs  
-      - For example - [EN_clean_Soul 2020.srt](<Samples/EN_clean_Soul 2020.srt>)
-  - `EN_clean_*.srt` → translated English subs  
-      - For example - [EN_clean_Soul 2020.srt](<Samples/EN_clean_Soul 2020.srt>)
-  - `movie.bg.srt` → merged bilingual subs  
-      - For example - [Soul 2020.bg.srt](<Samples/Soul 2020.bg.srt>)
+2. **transcribe.py**
+    - Transcribes the audio (from the vocals `.wav` or directly from the video) into subtitles using OpenAI's Whisper or Faster-Whisper.
+    - Produces a raw Bulgarian subtitle file (`BG_*.srt`).
+      - For example: [BG_Soul 2020.srt](<Samples/BG_Soul 2020.srt>)
+
+3. **cleanup_subs.py** (called automatically by the next step)
+    - Cleans up the raw Bulgarian subtitles by removing tiny/fragmented lines and normalizing timing.
+    - Produces a cleaned Bulgarian subtitle file (`BG_clean_*.srt`).
+      - For example: [BG_clean_Soul 2020.srt](<Samples/EN_clean_Soul 2020.srt>)
+
+4. **translate_subs.py**
+    - Translates the cleaned Bulgarian subtitles into English (or your chosen second language) using an online translation service.
+    - Produces a cleaned English subtitle file (`EN_clean_*.srt`).
+      - For example: [EN_clean_Soul 2020.srt](<Samples/EN_clean_Soul 2020.srt>)
+
+5. **merge_subs.py**
+    - Merges the cleaned Bulgarian and English subtitles into a single bilingual `.srt` file (`movie.bg.srt`), with BG text above and EN text below each timestamp.
+      - For example: [Soul 2020.bg.srt](<Samples/Soul 2020.bg.srt>)
+  Each script checks for existing output files and skips processing if the expected result already exists, making the workflow resumable and efficient.
+
+### Final Product
 
 <img width="1151" height="632" alt="image" src="https://github.com/user-attachments/assets/2e2e8dae-a006-47d4-9548-92ff7ec0de83" />
 
-This is a sample of what the final .SRT file can look like [Soul 2020.bg.srt](<Samples/Soul 2020.bg.srt>) and a small snippet is below:
+This is a sample of what the final .SRT file can look like ([Soul 2020.bg.srt](<Samples/Soul 2020.bg.srt>)) and a small snippet is below:
 ```
 2
 00:00:30,000 --> 00:00:34,880

@@ -24,7 +24,7 @@ def run_script(script):
         log(f"✅ Finished {script}\n")
         return True
     except subprocess.CalledProcessError as e:
-        log(f"❌ Script {script} failed with exit code {e.returncode}")
+        log(f"❌ Script {script} failed with exit code {e.returncode}. Exception: {e}")
         return False
     except FileNotFoundError:
         log(f"❌ Script {script} not found.")

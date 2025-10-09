@@ -2,11 +2,7 @@
 # Path & File Settings
 # =========================
 # Base folder for your movies/TV shows
-BASE_DIR = r"\\192.168.1.5\Media\TV Shows\Avatar Test"
-# BASE_DIR = r"\\192.168.1.5\Media\TV Shows"
-
-# Fallback folder for saving .srt if the target folder fails (use a local folder to ensure this works)
-FALLBACK_SRT_DIR = r"C:\Users\caten\Desktop\Fallback"
+BASE_DIR = r"\\192.168.1.5\Media\Movies\Soul"
 
 # Folder exclusion list (substrings or exact names)
 EXCLUDE_FOLDERS = [
@@ -31,58 +27,40 @@ SECOND_LANG_PREFIX = "EN"
 # Directory Traversal & Processing Behavior
 # =========================
 SCAN_FILES_IN_BASEDIR = True          # Scan video files directly in BASE_DIR
-RECURSIVE = True                       # Recurse into subfolders
-PROCESS_ONE_PER_FOLDER = False         # Only process the first valid video per folder
+RECURSIVE = False                       # Recurse into subfolders
 
 # =========================
 # Recognized File Extensions
 # =========================
 VIDEO_EXTENSIONS = [".mp4", ".avi", ".mkv", ".mov", ".mpg", ".ts", ".webm"]
 AUDIO_EXTENSIONS = [".wav"]
-BACKGROUND_SUPPRESSION = True            # Use background noise suppression (Demucs) before transcription
+BACKGROUND_SUPPRESSION = True            # Use background noise suppression (Demucs) before transcription and create .wav file, if false do transcribe directly on video file
 
 # =========================
 # Whisper / Transcription Settings
 # =========================
-WHISPER_MODEL = "medium"               # "small", "medium", "large"
-WHISPER_DEVICE = "cuda"                # "cuda", "cpu", etc.
-FORCE_CPU_IF_GPU_FAILS = False  # Set to True to auto-fallback to CPU
+WHISPER_MODEL = "large-v2"             # "small", "medium", "large-v2"
+USE_GPU = True                        # Use GPU if available and sets it to "cuda", otherwise "cpu" in the code
 
-# Fine-tuning transcription accuracy
-CONDITION_ON_PREVIOUS_TEXT = True
-TEMPERATURE = 0.0
-CARRY_INITIAL_PROMPT = True
-NO_SPEECH_THRESHOLD = 0.6
 
 # Use Faster-Whisper (optional)
 USE_FASTER_WHISPER = True
 COMPUTE_TYPE = "float16"              # GPU: float16/float32, CPU: int8
-BEAM_SIZE = 5
-
-# Text formatting options
-MAX_LINE_WIDTH = 42
-MAX_LINE_COUNT = 2
-MAX_WORDS_PER_LINE = 12
-VERBOSE = True
-
+BEAM_SIZE = 10                        # Beam size for transcription (higher = better quality, slower)
 
 # =========================
 # Subtitle Timing & Display Settings
 # =========================
-MIN_CHARS = 8                         # Minimum characters before flushing buffer
 MAX_CHARS_PER_LINE = 40                # Maximum characters in a single subtitle line
-CHARS_PER_SECOND = 15                  # Reading speed for dynamic duration
+CHARS_PER_SECOND = 12                  # Reading speed for dynamic duration
 
-MIN_DURATION = 0.3                     # Minimum seconds a subtitle is on screen
-MAX_DURATION = 2.0                     # Maximum seconds a subtitle is on screen
-MIN_GAP = 0.1             # Minimum gap between consecutive subtitles (seconds)
-
-# Optional: chunking settings for Faster Whisper
-CHUNK_SIZE = 30                         # seconds per chunk
-CHUNK_OVERLAP = 1.0                     # seconds overlap between chunks to avoid cutting words
+MIN_DURATION = 0.1                     # Minimum seconds a subtitle is on screen
+MAX_DURATION = 3.0                     # Maximum seconds a subtitle is on screen
+MIN_GAP = 0.05                         # Minimum gap between consecutive subtitles (seconds)
 
 
 # =========================
 # Debugging & Verbose Options
 # =========================
 VERBOSE = True
+KEEP_WAV = True  # If True, do not delete the _vocals.wav file after processing

@@ -38,6 +38,12 @@ def install_packages():
     # Demucs
     run([pip_path, "install", "--no-cache-dir", "demucs"])
 
+    # Playwright (for translation automation)
+    run([pip_path, "install", "--no-cache-dir", "playwright"])
+    # Install Playwright browser binaries
+    python_path = pip_path.replace('pip', 'python')
+    run([python_path, "-m", "playwright", "install"])
+
     # Utilities
     run([pip_path, "install", "--no-cache-dir", "numpy", "ffmpeg-python", "tqdm", "pydub", "langdetect", "googletrans==4.0.0-rc1"])
 

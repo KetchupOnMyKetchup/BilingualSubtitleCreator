@@ -1,39 +1,141 @@
 import os
 import subprocess
 from pathlib import Path
+import tempfile
 import config
+from faster_whisper import WhisperModel
+import pysrt
+from pydub import AudioSegment, effects
 
-MODEL_SIZE = "medium"
-LANGUAGE = "bg"
-OUTPUT_PREFIX = f"{LANGUAGE.upper()}_"  # Optional prefix for SRTs
+OUTPUT_PREFIX = f"{config.LANG_PREFIX.upper()}_"  # Optional prefix for SRTs
 
 
+# --- WAV conversion (includes normalization and FFmpeg fallback) ---
+def reencode_wav(input_path: Path) -> Path:
+    """
+    Re-encode a possibly float32 or nonstandard WAV file into clean 16-bit PCM.
+    This prevents Faster-Whisper from crashing on Demucs or float32 WAVs.
+    """
+    if not input_path.suffix.lower().endswith(".wav"):
+        return input_path  # Only re-encode WAV files
+
+    clean_path = Path(tempfile.gettempdir()) / f"{input_path.stem}_clean.wav"
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", str(input_path),
+        "-acodec", "pcm_s16le",
+        "-ar", "44100",
+        str(clean_path)
+    ]
+    try:
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print(f"🎧 Re-encoded clean WAV for transcription: {clean_path.name}")
+        return clean_path
+    except subprocess.CalledProcessError:
+        print(f"⚠️ FFmpeg re-encode failed, using original file: {input_path}")
+        return input_path
+
+
+def convert_wav_for_whisper(vocals_path: Path) -> Path:
+    """Convert Demucs WAV to standard 16-bit 16kHz mono WAV for Whisper."""
+    # Store the whisper-ready wav in the same folder as the input file
+    temp_file = vocals_path.parent / f"{vocals_path.stem}_whisper_ready.wav"
+    audio = AudioSegment.from_file(vocals_path)
+
+    # Normalize audio
+    audio = effects.normalize(audio)
+
+    # Optional: reduce bass bleed from background music
+    if getattr(config, "APPLY_HIGH_PASS", True):
+        audio = audio.high_pass_filter(80)
+
+    # Convert to mono, 16 kHz, 16-bit PCM
+    audio = audio.set_channels(1).set_frame_rate(16000).set_sample_width(2)
+    audio.export(temp_file, format="wav", codec="pcm_s16le")
+
+    print(f"🔧 Converted WAV for Whisper: {temp_file}")
+    return temp_file
+
+
+# --- Subtitle utilities ---
 def has_existing_srt(movie_path):
-    """Check if an SRT for this file already exists."""
-    movie_path = Path(movie_path)
-    # Strip "_vocals" if present in stem
-    stem = movie_path.stem
+    stem = Path(movie_path).stem
     if stem.endswith("_vocals"):
         stem = stem[:-7]
     srt_name = f"{OUTPUT_PREFIX}{stem}.srt"
-    srt_path = movie_path.with_name(srt_name)
-    return srt_path.exists()
+    return (Path(movie_path).parent / srt_name).exists()
 
 
+def compute_duration(text):
+    duration = max(len(text) / config.CHARS_PER_SECOND, config.MIN_DURATION)
+    return min(duration, config.MAX_DURATION)
+
+
+def safe_start_time(detected_start, previous_end):
+    return max(detected_start, previous_end)
+
+
+def generate_srt(segments, output_path):
+    subs = pysrt.SubRipFile()
+
+    previous_end = 0.0
+
+    for segment in segments:
+        text = segment.text.strip()
+        if not text:
+            continue
+
+        # Split long lines
+        lines = []
+        while len(text) > config.MAX_CHARS_PER_LINE:
+            split_at = text.rfind(" ", 0, config.MAX_CHARS_PER_LINE)
+            if split_at == -1:
+                split_at = config.MAX_CHARS_PER_LINE
+            lines.append(text[:split_at])
+            text = text[split_at:].strip()
+        if text:
+            lines.append(text)
+
+        # Snap start time to first word's start if available
+        seg_start = segment.start
+        if hasattr(segment, "words") and segment.words and hasattr(segment.words[0], "start"):
+            seg_start = segment.words[0].start
+
+        for line in lines:
+            start_time = safe_start_time(seg_start, previous_end)
+            duration = compute_duration(line)
+            end_time = start_time + duration
+
+            sub = pysrt.SubRipItem(
+                index=len(subs) + 1,
+                start=pysrt.SubRipTime(seconds=start_time),
+                end=pysrt.SubRipTime(seconds=end_time),
+                text=line
+            )
+            subs.append(sub)
+            previous_end = end_time + config.MIN_GAP
+
+    subs.save(output_path, encoding="utf-8")
+    print(f"✅🦖 Saved subtitles as {output_path}")
+
+
+def format_time(seconds: float) -> str:
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+# --- Transcription ---
 def transcribe_audio(movie_path):
-    """Run Whisper/Faster-Whisper directly in the movie folder."""
     movie_path = Path(movie_path)
     output_dir = movie_path.parent
-    # Use original stem for output
-    stem = movie_path.stem
-    if stem.endswith("_vocals"):
-        stem = stem[:-7]
+    stem = movie_path.stem[:-7] if movie_path.stem.endswith("_vocals") else movie_path.stem
     srt_name = f"{OUTPUT_PREFIX}{stem}.srt"
     srt_path = output_dir / srt_name
 
     if has_existing_srt(movie_path):
         print(f"⏭ Skipping {movie_path.name} (SRT already exists)")
-        # Delete _vocals.wav if SRT exists
         if movie_path.name.endswith("_vocals.wav"):
             try:
                 movie_path.unlink()
@@ -44,79 +146,86 @@ def transcribe_audio(movie_path):
 
     print(f"\n🎞️ Processing: {movie_path.name}")
 
-    cmd = [
-        "whisper",
-        str(movie_path),
-        "--model", MODEL_SIZE,
-        "--language", LANGUAGE,
-        "--output_format", "srt",
-        "--output_dir", str(output_dir)
-    ]
+    # --- 🔧 WAV fix integration point ---
+    safe_input = reencode_wav(movie_path)
+    whisper_ready_wav = convert_wav_for_whisper(safe_input)
 
-    try:
-        print(f"🎬 Transcribing {movie_path.name} ...")
-        subprocess.run(cmd, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Transcription failed for {movie_path.name}: {e}")
-        return
-    except Exception as e:
-        print(f"❌ Unexpected error while transcribing {movie_path.name}: {e}")
-        return
+    model = WhisperModel(
+        config.WHISPER_MODEL,
+        device="cuda" if config.USE_GPU else "cpu",
+        compute_type=config.COMPUTE_TYPE
+    )
 
-    # Whisper sometimes outputs without prefix
-    possible_outputs = [
-        srt_path,
-        output_dir / f"{movie_path.stem}.srt"
-    ]
+    print("🔊 Transcribing audio...")
+    segments = []
+    vad_params = dict(min_silence_duration_ms=1000, threshold=0.4)
+    for segment in model.transcribe(
+        str(whisper_ready_wav),
+        language=config.LANG_PREFIX.lower(),
+        beam_size=config.BEAM_SIZE,
+        word_timestamps=True,
+        vad_filter=True,
+        vad_parameters=vad_params,
+        initial_prompt=None,
+        chunk_length=60
+    )[0]:
+        segments.append(segment)
+        print(f"[{format_time(segment.start)} -> {format_time(segment.end)}] {segment.text.strip()}")
 
-    found_srt = False
-    for path in possible_outputs:
-        if path.exists():
-            if path.name != srt_name:
-                new_path = output_dir / srt_name
-                os.rename(path, new_path)
-                srt_path = new_path
-            print(f"✅🦖 Saved subtitles as {srt_path}")
-            found_srt = True
-            break
-
-    if not found_srt:
-        print(f"⚠️ Could not find SRT output for {movie_path.name}")
-        return
-
-    # Delete _vocals.wav after successful transcription
-    if movie_path.name.endswith("_vocals.wav"):
-        try:
-            movie_path.unlink()
-            print(f"🗑️ Deleted {movie_path.name} after transcription")
-        except Exception as e:
-            print(f"⚠️ Could not delete {movie_path.name}: {e}")
+    generate_srt(segments, srt_path)
+    # Return temp files for cleanup by caller
+    return whisper_ready_wav, safe_input
 
 
+# --- File collection ---
 def collect_files(base_dir):
-    """
-    Collect all files to transcribe depending on config.BACKGROUND_SUPPRESSION:
-    - True: only *_vocals.wav
-    - False: only video files
-    """
     targets = []
     for root, dirs, files in os.walk(base_dir):
         dirs[:] = [d for d in dirs if d not in getattr(config, "EXCLUDE_FOLDERS", [])]
-
         for f in files:
             ext = os.path.splitext(f)[1].lower()
             full_path = os.path.join(root, f)
-
             if config.BACKGROUND_SUPPRESSION:
                 if ext == ".wav" and f.endswith("_vocals.wav"):
                     targets.append(full_path)
             else:
                 if ext in [".mp4", ".mkv", ".mov", ".avi"]:
                     targets.append(full_path)
-
     return sorted(targets)
 
+# --- Cleanup utility ---
+def cleanup_temp_files(movie_path):
+    movie_path = Path(movie_path)
+    # Remove temp whisper wav (now stored in movie folder)
+    temp_whisper = movie_path.parent / f"{movie_path.stem}_whisper_ready.wav"
+    if temp_whisper.exists():
+        import config
+        if not getattr(config, "KEEP_WAV", False):
+            try:
+                temp_whisper.unlink()
+                print(f"🗑️ Deleted temp Whisper WAV: {temp_whisper.name}")
+            except Exception as e:
+                print(f"⚠️ Could not delete temp Whisper WAV: {e}")
+    # Remove reencoded wav if it exists and is not the original
+    clean_wav = Path(tempfile.gettempdir()) / f"{movie_path.stem}_clean.wav"
+    if clean_wav.exists():
+        try:
+            clean_wav.unlink()
+            print(f"🗑️ Deleted temp clean WAV: {clean_wav.name}")
+        except Exception as e:
+            print(f"⚠️ Could not delete temp clean WAV: {e}")
+    # Remove vocals file if needed and not keeping WAV
+    import config
+    if not getattr(config, "KEEP_WAV", False):
+        if movie_path.name.endswith("_vocals.wav") and movie_path.exists():
+            try:
+                movie_path.unlink()
+                print(f"🗑️ Deleted {movie_path.name} after transcription")
+            except Exception as e:
+                print(f"⚠️ Could not delete {movie_path.name}: {e}")
 
+
+# --- Main ---
 def main():
     base_dir = Path(config.BASE_DIR)
     if not base_dir.exists():
@@ -129,9 +238,35 @@ def main():
         return
 
     print(f"🎥 Found {len(files)} file(s) to transcribe.")
+
+    import sys
+    import subprocess
+    script_path = Path(__file__).resolve()
+
     for file in files:
-        transcribe_audio(file)
+        print(f"▶️ Launching subprocess for: {file}")
+        try:
+            result = subprocess.run([
+                sys.executable, str(script_path), '--transcribe-one', str(file)
+            ])
+            if result.returncode != 0:
+                print(f"❌ Subprocess failed for {file} with exit code {result.returncode}")
+            # Cleanup temp files after subprocess returns
+            cleanup_temp_files(file)
+        except Exception as e:
+            print(f"❌ Exception launching subprocess for {file}: {e}")
+            continue
+    print("✅ All files processed (errors skipped gracefully).")
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    if '--transcribe-one' in sys.argv:
+        idx = sys.argv.index('--transcribe-one')
+        if len(sys.argv) > idx + 1:
+            transcribe_audio(sys.argv[idx + 1])
+        else:
+            print("❌ No file provided for --transcribe-one")
+            sys.exit(1)
+    else:
+        main()

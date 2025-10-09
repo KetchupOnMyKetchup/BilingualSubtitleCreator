@@ -94,7 +94,7 @@ def clean_srt(input_file, output_file):
             gap = (next_start.ordinal - last_included_sub_end.ordinal) / 1000.0
             if gap > 0.3:
                 # linger up to 2 seconds but not more than the available gap minus a small buffer
-                linger = min(2.0, max(0.0, gap - 0.05))
+                linger = min(5.0, max(0.0, gap - 0.05))
 
         # Add linger
         if linger > 0:
