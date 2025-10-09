@@ -37,6 +37,8 @@ def clean_srt(input_file, output_file):
     prev_end = None              # end time of previously appended cleaned subtitle
     i = 1
 
+    clean_offset = getattr(config, "CLEAN_OFFSET_SECONDS", 0.0)
+
     for idx, sub in enumerate(subs):
         # Defensive: ensure sub has text
         text = (sub.text or "").strip()
@@ -46,14 +48,15 @@ def clean_srt(input_file, output_file):
 
         # If starting a new buffer, record start_time as this sub's start
         if start_time is None:
-            start_time = sub.start
+            # Apply offset to the start time
+            start_time = _add_seconds_to_srt_time(sub.start, clean_offset)
             last_included_sub_end = sub.end
         else:
             # extend last included end to this sub's end since we're adding this sub to the buffer
             if sub.end > last_included_sub_end:
                 last_included_sub_end = sub.end
 
-        buffer += (" " if buffer else "") + text
+        buffer = (buffer + " " + text).strip() if buffer else text.strip()
 
         # Decide whether to flush now
         flush = False
@@ -147,6 +150,8 @@ def clean_srt(input_file, output_file):
         # Give a slightly larger linger at the end of file so text stays readable
         final_linger = min(3.0, reading_time + 2.0)
 
+        # Apply offset to the start time
+        start_time_final = _add_seconds_to_srt_time(start_time or last_sub.start, clean_offset)
         end_time = _add_seconds_to_srt_time(last_sub.end, final_linger)
 
         # Avoid tiny overlap with previous cleaned subtitle
@@ -157,13 +162,18 @@ def clean_srt(input_file, output_file):
 
         cleaned.append(pysrt.SubRipItem(
             index=i,
-            start=start_time or last_sub.start,
+            start=start_time_final,
             end=end_time,
             text=buffer.strip()
         ))
 
         if getattr(config, "VERBOSE", False):
-            print(f"[{start_time or last_sub.start} --> {end_time}] {buffer.strip()}")
+            print(f"[{start_time_final} --> {end_time}] {buffer.strip()}")
+
+    # Replace all double spaces with single spaces in the cleaned subtitles
+    for sub in cleaned:
+        while "  " in sub.text:
+            sub.text = sub.text.replace("  ", " ")
 
     # Save cleaned file
     try:

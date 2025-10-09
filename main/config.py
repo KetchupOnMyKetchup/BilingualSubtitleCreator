@@ -51,12 +51,13 @@ BEAM_SIZE = 10                        # Beam size for transcription (higher = be
 # =========================
 # Subtitle Timing & Display Settings
 # =========================
-MAX_CHARS_PER_LINE = 40                # Maximum characters in a single subtitle line
-CHARS_PER_SECOND = 12                  # Reading speed for dynamic duration
+MAX_CHARS_PER_LINE = 30                # Maximum characters in a single subtitle line
+CHARS_PER_SECOND = 18                  # Reading speed for dynamic duration
 
-MIN_DURATION = 0.1                     # Minimum seconds a subtitle is on screen
+MIN_DURATION = 0.05                    # Minimum seconds a subtitle is on screen
 MAX_DURATION = 3.0                     # Maximum seconds a subtitle is on screen
-MIN_GAP = 0.05                         # Minimum gap between consecutive subtitles (seconds)
+MIN_GAP = 0.01                         # Minimum gap between consecutive subtitles (seconds)
+PAUSE_THRESHOLD = 0.3                  # Pause (in seconds) between words to split subtitles
 
 
 # =========================
@@ -64,3 +65,9 @@ MIN_GAP = 0.05                         # Minimum gap between consecutive subtitl
 # =========================
 VERBOSE = True
 KEEP_WAV = True  # If True, do not delete the _vocals.wav file after processing
+
+# =========================
+# Subtitle Cleaning Options
+# =========================
+# Offset (in seconds) to add to all cleaned subtitle start times (to delay slightly if needed)
+CLEAN_OFFSET_SECONDS = 0

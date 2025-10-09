@@ -78,42 +78,76 @@ def safe_start_time(detected_start, previous_end):
 def generate_srt(segments, output_path):
     subs = pysrt.SubRipFile()
 
+
     previous_end = 0.0
+    PAUSE_THRESHOLD = getattr(config, "PAUSE_THRESHOLD", 0.5)  # seconds; split if pause between words exceeds this
 
     for segment in segments:
         text = segment.text.strip()
         if not text:
             continue
 
-        # Split long lines
-        lines = []
-        while len(text) > config.MAX_CHARS_PER_LINE:
-            split_at = text.rfind(" ", 0, config.MAX_CHARS_PER_LINE)
-            if split_at == -1:
-                split_at = config.MAX_CHARS_PER_LINE
-            lines.append(text[:split_at])
-            text = text[split_at:].strip()
-        if text:
-            lines.append(text)
-
-        # Snap start time to first word's start if available
-        seg_start = segment.start
+        # If word-level timestamps are available, split on pauses between words
         if hasattr(segment, "words") and segment.words and hasattr(segment.words[0], "start"):
-            seg_start = segment.words[0].start
+            words = segment.words
+            current_line = words[0].word
+            line_start = words[0].start
+            for i in range(1, len(words)):
+                gap = words[i].start - words[i-1].end
+                if gap > PAUSE_THRESHOLD or len(current_line) > config.MAX_CHARS_PER_LINE:
+                    # End current line and start a new one
+                    start_time = safe_start_time(line_start, previous_end)
+                    duration = compute_duration(current_line)
+                    end_time = start_time + duration
+                    subs.append(pysrt.SubRipItem(
+                        index=len(subs) + 1,
+                        start=pysrt.SubRipTime(seconds=start_time),
+                        end=pysrt.SubRipTime(seconds=end_time),
+                        text=current_line.strip()
+                    ))
+                    previous_end = end_time + config.MIN_GAP
+                    # Start new line
+                    current_line = words[i].word
+                    line_start = words[i].start
+                else:
+                    current_line += ' ' + words[i].word
+            # Add the last line in the segment
+            if current_line.strip():
+                start_time = safe_start_time(line_start, previous_end)
+                duration = compute_duration(current_line)
+                end_time = start_time + duration
+                subs.append(pysrt.SubRipItem(
+                    index=len(subs) + 1,
+                    start=pysrt.SubRipTime(seconds=start_time),
+                    end=pysrt.SubRipTime(seconds=end_time),
+                    text=current_line.strip()
+                ))
+                previous_end = end_time + config.MIN_GAP
+        else:
+            # Fallback: original logic for segments without word-level timestamps
+            # Split long lines
+            lines = []
+            while len(text) > config.MAX_CHARS_PER_LINE:
+                split_at = text.rfind(" ", 0, config.MAX_CHARS_PER_LINE)
+                if split_at == -1:
+                    split_at = config.MAX_CHARS_PER_LINE
+                lines.append(text[:split_at])
+                text = text[split_at:].strip()
+            if text:
+                lines.append(text)
 
-        for line in lines:
-            start_time = safe_start_time(seg_start, previous_end)
-            duration = compute_duration(line)
-            end_time = start_time + duration
-
-            sub = pysrt.SubRipItem(
-                index=len(subs) + 1,
-                start=pysrt.SubRipTime(seconds=start_time),
-                end=pysrt.SubRipTime(seconds=end_time),
-                text=line
-            )
-            subs.append(sub)
-            previous_end = end_time + config.MIN_GAP
+            seg_start = segment.start
+            for line in lines:
+                start_time = safe_start_time(seg_start, previous_end)
+                duration = compute_duration(line)
+                end_time = start_time + duration
+                subs.append(pysrt.SubRipItem(
+                    index=len(subs) + 1,
+                    start=pysrt.SubRipTime(seconds=start_time),
+                    end=pysrt.SubRipTime(seconds=end_time),
+                    text=line
+                ))
+                previous_end = end_time + config.MIN_GAP
 
     subs.save(output_path, encoding="utf-8")
     print(f"✅🦖 Saved subtitles as {output_path}")
@@ -158,7 +192,7 @@ def transcribe_audio(movie_path):
 
     print("🔊 Transcribing audio...")
     segments = []
-    vad_params = dict(min_silence_duration_ms=1000, threshold=0.4)
+    vad_params = dict(min_silence_duration_ms=500, threshold=0.4)
     for segment in model.transcribe(
         str(whisper_ready_wav),
         language=config.LANG_PREFIX.lower(),
