@@ -46,18 +46,18 @@ USE_GPU = True                        # Use GPU if available and sets it to "cud
 # Use Faster-Whisper (optional)
 USE_FASTER_WHISPER = True
 COMPUTE_TYPE = "float16"              # GPU: float16/float32, CPU: int8
-BEAM_SIZE = 10                        # Beam size for transcription (higher = better quality, slower)
+BEAM_SIZE = 15                        # Beam size for transcription (higher = better quality, slower)
 
 # =========================
 # Subtitle Timing & Display Settings
 # =========================
-MAX_CHARS_PER_LINE = 30                # Maximum characters in a single subtitle line
+MAX_CHARS_PER_LINE = 25                # Maximum characters in a single subtitle line
 CHARS_PER_SECOND = 18                  # Reading speed for dynamic duration
 
 MIN_DURATION = 0.05                    # Minimum seconds a subtitle is on screen
 MAX_DURATION = 3.0                     # Maximum seconds a subtitle is on screen
 MIN_GAP = 0.01                         # Minimum gap between consecutive subtitles (seconds)
-PAUSE_THRESHOLD = 0.3                  # Pause (in seconds) between words to split subtitles
+PAUSE_THRESHOLD = 0.2                  # Pause (in seconds) between words to split subtitles
 
 
 # =========================
@@ -69,5 +69,5 @@ KEEP_WAV = True  # If True, do not delete the _vocals.wav file after processing
 # =========================
 # Subtitle Cleaning Options
 # =========================
-# Offset (in seconds) to add to all cleaned subtitle start times (to delay slightly if needed)
+# Offset (in seconds) to add to all cleaned subtitle start times (to delay slightly if needed) can be positive or negative
 CLEAN_OFFSET_SECONDS = 0
