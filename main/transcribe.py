@@ -23,6 +23,13 @@ def reencode_wav(input_path: Path) -> Path:
     cmd = [
         "ffmpeg", "-y",
         "-i", str(input_path),
+        "-af",
+        (
+            "highpass=f=100,"
+            "lowpass=f=8000,"
+            "afftdn=nf=-25,"
+            "compand=attacks=0.02:decays=0.3:points=-80/-900|-60/-20|-40/-12|-20/-6|0/-3"
+        ),
         "-acodec", "pcm_s16le",
         "-ar", "44100",
         str(clean_path)
@@ -196,12 +203,16 @@ def transcribe_audio(movie_path):
     for segment in model.transcribe(
         str(whisper_ready_wav),
         language=config.LANG_PREFIX.lower(),
-        beam_size=config.BEAM_SIZE,
+        beam_size=getattr(config, "BEAM_SIZE", 15),
         word_timestamps=True,
-        vad_filter=True,
+        vad_filter=False,
         vad_parameters=vad_params,
         initial_prompt=None,
-        chunk_length=60
+        chunk_length=60,
+        no_speech_threshold=getattr(config, "NO_SPEECH_THRESHOLD", 0.6),
+        condition_on_previous_text=False,
+        patience=2.0,
+        compression_ratio_threshold=3.0
     )[0]:
         segments.append(segment)
         print(f"[{format_time(segment.start)} -> {format_time(segment.end)}] {segment.text.strip()}")
@@ -233,7 +244,6 @@ def cleanup_temp_files(movie_path):
     # Remove temp whisper wav (now stored in movie folder)
     temp_whisper = movie_path.parent / f"{movie_path.stem}_whisper_ready.wav"
     if temp_whisper.exists():
-        import config
         if not getattr(config, "KEEP_WAV", False):
             try:
                 temp_whisper.unlink()
@@ -249,7 +259,6 @@ def cleanup_temp_files(movie_path):
         except Exception as e:
             print(f"⚠️ Could not delete temp clean WAV: {e}")
     # Remove vocals file if needed and not keeping WAV
-    import config
     if not getattr(config, "KEEP_WAV", False):
         if movie_path.name.endswith("_vocals.wav") and movie_path.exists():
             try:

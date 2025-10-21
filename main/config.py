@@ -39,32 +39,33 @@ BACKGROUND_SUPPRESSION = True            # Use background noise suppression (Dem
 # =========================
 # Whisper / Transcription Settings
 # =========================
-WHISPER_MODEL = "large-v2"             # "small", "medium", "large-v2"
+WHISPER_MODEL = "large-v2"            # "small", "medium", "large-v2"
 USE_GPU = True                        # Use GPU if available and sets it to "cuda", otherwise "cpu" in the code
 
 
 # Use Faster-Whisper (optional)
 USE_FASTER_WHISPER = True
 COMPUTE_TYPE = "float16"              # GPU: float16/float32, CPU: int8
-BEAM_SIZE = 15                        # Beam size for transcription (higher = better quality, slower)
+BEAM_SIZE = 14                        # Beam size for transcription (higher = better quality, slower)
+NO_SPEECH_THRESHOLD = 0.2             # Threshold for no speech detection (0.0 - 1.0), higher = more strict
 
 # =========================
 # Subtitle Timing & Display Settings
 # =========================
-MAX_CHARS_PER_LINE = 25                # Maximum characters in a single subtitle line
-CHARS_PER_SECOND = 18                  # Reading speed for dynamic duration
+MAX_CHARS_PER_LINE = 40                # Maximum characters in a single subtitle line. 
+CHARS_PER_SECOND = 20                  # Reading speed for dynamic duration. Higher value (18-20) = Faster reading speed assumption. Subtitles vanish quickly.
 
-MIN_DURATION = 0.05                    # Minimum seconds a subtitle is on screen
+MIN_DURATION = 0.01                    # Minimum seconds a subtitle is on screen
 MAX_DURATION = 3.0                     # Maximum seconds a subtitle is on screen
-MIN_GAP = 0.01                         # Minimum gap between consecutive subtitles (seconds)
+MIN_GAP = 0.0                          # Minimum gap between consecutive subtitles (seconds)
 PAUSE_THRESHOLD = 0.2                  # Pause (in seconds) between words to split subtitles
 
 
 # =========================
 # Debugging & Verbose Options
 # =========================
-VERBOSE = True
-KEEP_WAV = True  # If True, do not delete the _vocals.wav file after processing
+VERBOSE = True                         # Enable verbose logging
+KEEP_WAV = True                        # If True, do not delete the _vocals.wav files after processing
 
 # =========================
 # Subtitle Cleaning Options

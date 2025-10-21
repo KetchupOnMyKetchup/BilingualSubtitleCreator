@@ -76,7 +76,7 @@ def clean_srt(input_file, output_file):
 
         # Compute reading_time based on characters in buffer
         chars_per_second = getattr(config, "CHARS_PER_SECOND", 15)
-        min_duration = getattr(config, "MIN_DURATION", 0.3)
+        min_duration = getattr(config, "MIN_DURATION", 0)
         max_duration = getattr(config, "MAX_DURATION", 2.0)
 
         reading_time = max(min_duration, len(buffer) / max(1.0, chars_per_second))
@@ -106,7 +106,7 @@ def clean_srt(input_file, output_file):
         # Do not overlap the next subtitle: enforce end_time <= next_start - MIN_GAP
         if idx + 1 < len(subs):
             next_start = subs[idx + 1].start
-            min_gap = getattr(config, "MIN_GAP", 0.1)
+            min_gap = getattr(config, "MIN_GAP", 0.01)
             limit = pysrt.SubRipTime(milliseconds=int(( (next_start.ordinal - pysrt.SubRipTime(0,0,0,0).ordinal) / 1000.0 - min_gap ) * 1000))
             # Simpler: if end_time >= next_start - min_gap, set end_time to that bound:
             bound = next_start - pysrt.SubRipTime(milliseconds=int(min_gap * 1000))
@@ -116,9 +116,9 @@ def clean_srt(input_file, output_file):
         # Ensure we don't start earlier than prev_end (shouldn't happen normally), if too close shift forward
         if prev_end:
             gap_from_prev = (start_time.ordinal - prev_end.ordinal) / 1000.0
-            if gap_from_prev < getattr(config, "MIN_GAP", 0.1):
+            if gap_from_prev < getattr(config, "MIN_GAP", 0.01):
                 # shift both start and end forward so there's MIN_GAP after prev_end
-                shift = getattr(config, "MIN_GAP", 0.1) - gap_from_prev
+                shift = getattr(config, "MIN_GAP", 0.01) - gap_from_prev
                 start_time = _add_seconds_to_srt_time(start_time, shift)
                 end_time = _add_seconds_to_srt_time(end_time, shift)
 
@@ -145,7 +145,7 @@ def clean_srt(input_file, output_file):
         # Use the last parsed sub as base for end time if available
         last_sub = subs[-1]
         chars_per_second = getattr(config, "CHARS_PER_SECOND", 15)
-        min_duration = getattr(config, "MIN_DURATION", 0.3)
+        min_duration = getattr(config, "MIN_DURATION", 0)
         reading_time = max(min_duration, len(buffer) / max(1.0, chars_per_second))
         # Give a slightly larger linger at the end of file so text stays readable
         final_linger = min(3.0, reading_time + 2.0)
@@ -157,8 +157,8 @@ def clean_srt(input_file, output_file):
         # Avoid tiny overlap with previous cleaned subtitle
         if prev_end:
             gap = (end_time.ordinal - prev_end.ordinal) / 1000.0
-            if gap < getattr(config, "MIN_GAP", 0.1):
-                end_time = _add_seconds_to_srt_time(prev_end, getattr(config, "MIN_GAP", 0.1))
+            if gap < getattr(config, "MIN_GAP", 0.01):
+                end_time = _add_seconds_to_srt_time(prev_end, getattr(config, "MIN_GAP", 0.01))
 
         cleaned.append(pysrt.SubRipItem(
             index=i,
