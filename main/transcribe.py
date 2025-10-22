@@ -205,7 +205,7 @@ def transcribe_audio(movie_path):
         passes = [
         {
             "name": "accurate",
-            "beam_size": 20,
+            "beam_size": 25,
             "temperature": 0,
             "condition_on_previous_text": False,
             "no_speech_threshold": 0.6,
@@ -215,16 +215,16 @@ def transcribe_audio(movie_path):
         {
             "name": "balanced",
             "beam_size": 10,
-            "temperature": 0.4,
+            "temperature": 0.1,
             "condition_on_previous_text": False,
             "no_speech_threshold": 0.2,
-            "compression_ratio_threshold": 10.0,
+            "compression_ratio_threshold": 6.0,
             "chunk_length": 30
         },
         {
             "name": "coverage",
-            "beam_size": 5,
-            "temperature": 0.6,
+            "beam_size": 35,
+            "temperature": 0.2,
             "condition_on_previous_text": True,
             "no_speech_threshold": 0.05,
             "compression_ratio_threshold": 10.0,
