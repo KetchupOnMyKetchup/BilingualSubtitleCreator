@@ -45,13 +45,15 @@ USE_GPU = True                        # Use GPU if available and sets it to "cud
 
 # Use Faster-Whisper (optional)
 USE_FASTER_WHISPER = True
+
+
+# =========================
+# Subtitle Quality, Timing & Display Settings
+# =========================
 COMPUTE_TYPE = "float16"              # GPU: float16/float32, CPU: int8
 BEAM_SIZE = 14                        # Beam size for transcription (higher = better quality, slower)
 NO_SPEECH_THRESHOLD = 0.2             # Threshold for no speech detection (0.0 - 1.0), higher = more strict
 
-# =========================
-# Subtitle Timing & Display Settings
-# =========================
 MAX_CHARS_PER_LINE = 40                # Maximum characters in a single subtitle line. 
 CHARS_PER_SECOND = 20                  # Reading speed for dynamic duration. Higher value (18-20) = Faster reading speed assumption. Subtitles vanish quickly.
 
@@ -60,8 +62,10 @@ MAX_DURATION = 3.0                     # Maximum seconds a subtitle is on screen
 MIN_GAP = 0.0                          # Minimum gap between consecutive subtitles (seconds)
 PAUSE_THRESHOLD = 0.2                  # Pause (in seconds) between words to split subtitles
 
-
-MULTIPLE_TRANSCRIBE_RUNS = True        # If True, perform multiple (3) transcription passes with different Whisper Settings and merge SRT files to improve accuracy. If False, only one pass is done.
+# =========================
+# Perform multiple (3) transcription passes with different Whisper Settings and merge SRT files to improve accuracy if set to True and will ignore above settings
+# =========================
+MULTIPLE_TRANSCRIBE_RUNS = True        # If False, only one pass is done.
 
 # =========================
 # Debugging & Verbose Options

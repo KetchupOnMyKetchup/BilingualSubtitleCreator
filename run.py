@@ -8,6 +8,7 @@ from datetime import datetime
 SCRIPTS = [
     "main/extract_vocals_to_wav.py",
     "main/transcribe.py",
+    "main/remove_spammy_text_srts.py",
     "main/merge_multiple_transcribe_run_srts.py",
     "main/translate_subs.py",
     "main/merge_subs.py"
