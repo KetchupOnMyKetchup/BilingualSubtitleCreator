@@ -61,6 +61,8 @@ MIN_GAP = 0.0                          # Minimum gap between consecutive subtitl
 PAUSE_THRESHOLD = 0.2                  # Pause (in seconds) between words to split subtitles
 
 
+MULTIPLE_TRANSCRIBE_RUNS = True        # If True, perform multiple (3) transcription passes with different Whisper Settings and merge SRT files to improve accuracy. If False, only one pass is done.
+
 # =========================
 # Debugging & Verbose Options
 # =========================

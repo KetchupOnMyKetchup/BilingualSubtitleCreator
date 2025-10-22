@@ -69,8 +69,12 @@ def has_existing_srt(movie_path):
     stem = Path(movie_path).stem
     if stem.endswith("_vocals"):
         stem = stem[:-7]
-    srt_name = f"{OUTPUT_PREFIX}{stem}.srt"
-    return (Path(movie_path).parent / srt_name).exists()
+    
+    srt_name = f"{OUTPUT_PREFIX}{stem}"
+
+    for file in os.listdir(Path(movie_path).parent):
+        if file.startswith(srt_name) and file.endswith(".srt"):
+            return True
 
 
 def compute_duration(text):
@@ -172,12 +176,10 @@ def transcribe_audio(movie_path):
     movie_path = Path(movie_path)
     output_dir = movie_path.parent
     stem = movie_path.stem[:-7] if movie_path.stem.endswith("_vocals") else movie_path.stem
-    srt_name = f"{OUTPUT_PREFIX}{stem}.srt"
-    srt_path = output_dir / srt_name
 
     if has_existing_srt(movie_path):
         print(f"⏭ Skipping {movie_path.name} (SRT already exists)")
-        if movie_path.name.endswith("_vocals.wav"):
+        if config.KEEP_WAV == False and movie_path.name.endswith("_vocals.wav"):
             try:
                 movie_path.unlink()
                 print(f"🗑️ Deleted existing {movie_path.name}")
@@ -191,33 +193,89 @@ def transcribe_audio(movie_path):
     safe_input = reencode_wav(movie_path)
     whisper_ready_wav = convert_wav_for_whisper(safe_input)
 
+    # --- Load model once ---
     model = WhisperModel(
         config.WHISPER_MODEL,
         device="cuda" if config.USE_GPU else "cpu",
         compute_type=config.COMPUTE_TYPE
     )
 
-    print("🔊 Transcribing audio...")
-    segments = []
-    vad_params = dict(min_silence_duration_ms=500, threshold=0.4)
-    for segment in model.transcribe(
-        str(whisper_ready_wav),
-        language=config.LANG_PREFIX.lower(),
-        beam_size=getattr(config, "BEAM_SIZE", 15),
-        word_timestamps=True,
-        vad_filter=False,
-        vad_parameters=vad_params,
-        initial_prompt=None,
-        chunk_length=60,
-        no_speech_threshold=getattr(config, "NO_SPEECH_THRESHOLD", 0.6),
-        condition_on_previous_text=False,
-        patience=2.0,
-        compression_ratio_threshold=3.0
-    )[0]:
-        segments.append(segment)
-        print(f"[{format_time(segment.start)} -> {format_time(segment.end)}] {segment.text.strip()}")
+    # --- Define transcription passes ---
+    if getattr(config, "MULTIPLE_TRANSCRIBE_RUNS", False):
+        passes = [
+        {
+            "name": "accurate",
+            "beam_size": 20,
+            "temperature": 0,
+            "condition_on_previous_text": False,
+            "no_speech_threshold": 0.6,
+            "compression_ratio_threshold": 10.0,
+            "chunk_length": 30
+        },
+        {
+            "name": "balanced",
+            "beam_size": 10,
+            "temperature": 0.4,
+            "condition_on_previous_text": False,
+            "no_speech_threshold": 0.2,
+            "compression_ratio_threshold": 10.0,
+            "chunk_length": 30
+        },
+        {
+            "name": "coverage",
+            "beam_size": 5,
+            "temperature": 0.6,
+            "condition_on_previous_text": True,
+            "no_speech_threshold": 0.05,
+            "compression_ratio_threshold": 10.0,
+            "chunk_length": 20
+        },
+    ]
 
-    generate_srt(segments, srt_path)
+    else:
+        passes = [
+            {"name": None, "beam_size": getattr(config, "BEAM_SIZE", 15), "temperature": 0}
+        ]
+
+    # --- Run transcription(s) ---
+    for run in passes:
+        print(f"🔊 Transcribing ({run['name'] or 'single pass'}) with beam={run['beam_size']} temp={run['temperature']}")
+        segments = []
+
+        vad_params = dict(min_silence_duration_ms=500, threshold=0.4)
+        try:
+            result = model.transcribe(
+                str(whisper_ready_wav),
+                language=config.LANG_PREFIX.lower(),
+                beam_size=run["beam_size"],
+                temperature=run["temperature"],
+                condition_on_previous_text=run["condition_on_previous_text"],
+                no_speech_threshold=run["no_speech_threshold"],
+                compression_ratio_threshold=run["compression_ratio_threshold"],
+                chunk_length=run["chunk_length"],
+                word_timestamps=True,
+                vad_filter=False,
+                vad_parameters=vad_params,
+                initial_prompt=None,
+                patience=3.0,
+            )
+
+            for segment in result[0]:
+                segments.append(segment)
+                print(f"[{format_time(segment.start)} -> {format_time(segment.end)}] {segment.text.strip()}")
+
+            # Decide output name based on pass
+            if run["name"]:
+                srt_name = f"{OUTPUT_PREFIX}{stem}_{run['name']}.srt"
+            else:
+                srt_name = f"{OUTPUT_PREFIX}{stem}.srt"
+
+            srt_path = output_dir / srt_name
+            generate_srt(segments, srt_path)
+
+        except Exception as e:
+            print(f"❌ Transcription failed for {run['name'] or 'main'} pass: {e}")
+
     # Return temp files for cleanup by caller
     return whisper_ready_wav, safe_input
 

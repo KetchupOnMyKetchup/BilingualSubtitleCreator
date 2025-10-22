@@ -41,10 +41,22 @@ def clean_srt(input_file, output_file):
 
     for idx, sub in enumerate(subs):
         # Defensive: ensure sub has text
+        import re
         text = (sub.text or "").strip()
         if not text:
-            # no spoken text here; skip but keep potential start_time if we are buffering
             continue
+
+        # --- SPAM FILTER ---
+        # Skip subtitles that are just repeated letters, filler vowels, or syllables like "ААААААААА", "Ахххххххх", "Уууууууу", "А -А -А"
+        spammy_pattern = re.compile(
+            r"^([А-Яа-яA-Za-z]\s*[-–]?\s*){3,}$|^(.)\1{6,}|[АаУуХх]{6,}",  # catches repeated letters/syllables
+            re.UNICODE
+        )
+        if spammy_pattern.search(text):
+            if getattr(config, "VERBOSE", False):
+                print(f"🗑️ Skipping spammy subtitle: {text}")
+            continue
+        # --------------------
 
         # If starting a new buffer, record start_time as this sub's start
         if start_time is None:
