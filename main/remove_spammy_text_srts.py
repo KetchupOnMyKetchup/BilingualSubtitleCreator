@@ -8,18 +8,42 @@ import config
 # This has only been set to handle English and Cyrillic spammy patterns so far.
 # Adjust/add more patterns as needed for other languages.
 SPAMMY_PATTERN = re.compile(
-    r"^(?:[А-Яа-яA-Za-z]{1,2}([-–]\s*)){10,}[А-Яа-яA-Za-z]{1,2}$|"  # repeated short syllables with dash 10+ times
-    r"(.)\1{5,}|"                                                    # same char repeated 6+ times
-    r"(?:[-–]){3,}|"                                                 # 3+ dashes
-    r"\.{6,}|"                                                       # 6+ dots
-    r"!{4,}|"                                                        # 4+ exclamations
-    r"\?{4,}|"                                                       # 4+ question marks
-    r"\b(?:asdf|qwerty|lolol|hahaha|kkkkk|ahah|hehe|lol)\b|"         # nonsense words
-    r"\b([A-Za-z]{2,3}[-]?\1){2,}\b|"                                # repeated short English syllables
-    r"\b([А-Яа-я]{2,3}[-]?\1){2,}\b|"                                # repeated short Cyrillic syllables
-    r"[A-Za-zА-Яа-яЁё]{20,}",                                        # long solid word
+    # repeated short words/syllables with optional dash/punctuation, 3+ times
+    r"^(?:[-–]?\s*[А-Яа-яA-Za-z]{1,3}[!.,]?\s+){3,}$|"
+
+    # repeated short words separated by comma, dash, or spaces, 3+ times
+    r"^(?:\b([А-Яа-яA-Za-z]{1,3})[!.,]?\b[\s,.-]*){3,}$|"
+
+    # same char repeated 6+ times
+    r"(.)\1{5,}|"
+
+    # 3+ dashes anywhere
+    r"(?:[-–]){3,}|"
+
+    # 3+ dots if it's the whole line
+    r"^\s*\.{3,}\s*$|"
+
+    # 4+ exclamations
+    r"!{4,}|"
+
+    # 4+ question marks
+    r"\?{4,}|"
+
+    # nonsense words
+    r"\b(?:asdf|qwerty|lolol|hahaha|kkkkk|ahah|hehe|редактор|коректор|субтитров|устройството|абонирайте|абонирате|lol)\b|"
+
+    # repeated short English syllables, 2+ times
+    r"\b([A-Za-z]{2,3}[-]?\1){2,}\b|"
+
+    # repeated short Cyrillic syllables, 2+ times
+    r"\b([А-Яа-я]{2,3}[-]?\1){2,}\b|"
+
+    # long solid word
+    r"[A-Za-zА-Яа-яЁё]{20,}",
+
     re.UNICODE | re.IGNORECASE
 )
+
 
 # Only remove lines that consist entirely of short words if there are no normal-length words
 def is_pure_short_words(line):
