@@ -12,10 +12,12 @@ TWO_STEMS = "vocals"                 # Extract only vocals stem
 # -----------------------------
 
 def srt_exists(movie_path):
-    """Check if primary language SRT already exists for this movie."""
     movie_path = Path(movie_path)
-    srt_file = movie_path.parent / f"{config.LANG_PREFIX}_{movie_path.stem}.srt"
-    return srt_file.exists()
+    movie_stem = movie_path.stem
+    
+    language_srt_file = movie_path.parent / f"{config.LANG_PREFIX}_{movie_path.stem}.srt"
+    srt_file = movie_path.parent / f"{movie_stem}.srt"
+    return srt_file.exists() or language_srt_file.exists()
 
 def get_video_files(base_dir):
     """Collect video files based on config traversal settings, skip samples."""
@@ -56,8 +58,12 @@ def extract_vocals(movie_path):
     output_dir = movie_path.parent
     output_wav = output_dir / f"{movie_path.stem}{AUDIO_OUTPUT_SUFFIX}"
 
+    output_accurate_language_srt_name = output_dir / f"{config.LANG_PREFIX}_{movie_path.stem}_accurate.srt"
+    output_language_srt_name = output_dir / f"{config.LANG_PREFIX}_{movie_path.stem}.srt"
+    output_srt_name = output_dir / f"{movie_path.stem}.srt"
+
     # Skip if already exists
-    if output_wav.exists():
+    if output_wav.exists() or output_accurate_language_srt_name.exists() or output_language_srt_name.exists() or output_srt_name.exists():
         print(f"⏭ Skipping {movie_path.name} (vocals already exist)")
         return None
 
