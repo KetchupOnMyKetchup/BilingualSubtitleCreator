@@ -1,7 +1,6 @@
 # main/merge_multiple_transcribe_run_srts.py
 import os
 from pathlib import Path
-import math
 import pysrt
 import config
 
@@ -169,6 +168,29 @@ def _merge_in_gaps(merged: pysrt.SubRipFile, source: pysrt.SubRipFile, label: st
     print(f"✅ Added {len(added_entries)} subs from {label}")
     return len(added_entries)
 
+def delete_model_srts(base_srt_path: Path):
+    """
+    Delete the *_accurate.srt, *_balanced.srt, and *_coverage.srt files
+    only if the merged SRT (base_srt_path) exists.
+    """
+    if not base_srt_path.exists():
+        print(f"⚠️ Merged file not found, skipping cleanup: {base_srt_path.name}")
+        return
+
+    suffixes = ["_accurate.srt", "_balanced.srt", "_coverage.srt"]
+
+    for suffix in suffixes:
+        target_file = base_srt_path.with_name(base_srt_path.stem + suffix)
+        if target_file.exists():
+            try:
+                os.remove(target_file)
+                print(f"🗑️ Deleted {target_file.name}")
+            except Exception as e:
+                print(f"⚠️ Could not delete {target_file.name}: {e}")
+        else:
+            if getattr(config, "VERBOSE", False):
+                print(f"ℹ️ File not found: {target_file.name}")
+
 
 def merge_srts_for_movie(movie_path: Path):
     """
@@ -224,6 +246,9 @@ def merge_srts_for_movie(movie_path: Path):
     merged.save(str(merged_path), encoding="utf-8")
     print(f"💾 Merged file saved → {merged_path.name}")
 
+    # Cleanup extra .srt files
+    if not getattr(config, "KEEP_ACCURATE_BALANCED_COVERAGE_SRT_FILES", False):
+        delete_model_srts(Path(merged_path))
 
 def main():
     if not getattr(config, "MULTIPLE_TRANSCRIBE_RUNS", False):

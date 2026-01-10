@@ -62,6 +62,11 @@ def extract_vocals(movie_path):
     output_language_srt_name = output_dir / f"{config.LANG_PREFIX}_{movie_path.stem}.srt"
     output_srt_name = output_dir / f"{movie_path.stem}.srt"
 
+    # Skip Demucs processing if USE_AUDIO_WAV is False
+    if not config.USE_AUDIO_WAV:
+        print("⏭ Skipping audio extraction (USE_AUDIO_WAV is False)")
+        return None
+
     # Skip if already exists
     if output_wav.exists() or output_accurate_language_srt_name.exists() or output_language_srt_name.exists() or output_srt_name.exists():
         print(f"⏭ Skipping {movie_path.name} (vocals already exist)")

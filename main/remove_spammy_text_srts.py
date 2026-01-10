@@ -44,6 +44,18 @@ SPAMMY_PATTERN = re.compile(
     re.UNICODE | re.IGNORECASE
 )
 
+# Separate repeated words and emoji checks
+REPEATED_WORDS_PATTERN = re.compile(
+    r"(?:\b(\w+)\b(?:\s+\1\b){2,})", re.UNICODE | re.IGNORECASE
+)
+
+EMOJI_PATTERN = re.compile(
+    r"[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF"
+    r"\U0001F700-\U0001F77F\U0001F780-\U0001F7FF\U0001F800-\U0001F8FF"
+    r"\U0001F900-\U0001F9FF\U0001FA00-\U0001FA6F\U0001FA70-\U0001FAFF"
+    r"\U00002702-\U000027B0\U000024C2-\U0001F251]+",
+    re.UNICODE
+)
 
 # Only remove lines that consist entirely of short words if there are no normal-length words
 def is_pure_short_words(line):
@@ -52,8 +64,16 @@ def is_pure_short_words(line):
         return True
     return False
 
+# Update _spammy to include separate checks
 def _spammy(text: str) -> bool:
-    spammy = bool(text and SPAMMY_PATTERN.search(text.strip()) or is_pure_short_words(text.strip()))
+    spammy = bool(
+        text and (
+            SPAMMY_PATTERN.search(text.strip()) or
+            REPEATED_WORDS_PATTERN.search(text.strip()) or
+            EMOJI_PATTERN.search(text.strip()) or
+            is_pure_short_words(text.strip())
+        )
+    )
     if spammy and getattr(config, "VERBOSE", False):
         print(f"🗑️ Detected spammy subtitle: {text}")
     return spammy

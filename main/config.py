@@ -2,14 +2,18 @@
 # Path & File Settings
 # =========================
 # Base folder for your movies/TV shows
-BASE_DIR = r"\\192.168.1.5\Media\Movies\Soul"
+BASE_DIR = r"\\192.168.1.5\Media\Movies\Bulgarian\Tangled"
 
 # Folder exclusion list (substrings or exact names)
 EXCLUDE_FOLDERS = [
     "Stargate Atlantis",
     "Stargate SG-1",
     "Stargate Universe",
-    "Avatar.The.Last.Airbender.S01-S03.TVRIP.x264.BGAUDiO-GOD"
+    "Avatar.The.Last.Airbender.S01-S03.TVRIP.x264.BGAUDiO-GOD",
+    "Soul",
+    "Ratatouille",
+    "Cars 3",
+    "Clueless (1995)",
 ]
 
 # =========================
@@ -27,7 +31,7 @@ SECOND_LANG_PREFIX = "EN"
 # Directory Traversal & Processing Behavior
 # =========================
 SCAN_FILES_IN_BASEDIR = True          # Scan video files directly in BASE_DIR
-RECURSIVE = False                       # Recurse into subfolders
+RECURSIVE = True                      # Recurse into subfolders
 
 # =========================
 # Recognized File Extensions
@@ -71,10 +75,16 @@ MULTIPLE_TRANSCRIBE_RUNS = True        # If False, only one pass is done.
 # Debugging & Verbose Options
 # =========================
 VERBOSE = True                         # Enable verbose logging
-KEEP_WAV = True                        # If True, do not delete the _vocals.wav files after processing
+KEEP_WAV = True                       # If True, do not delete the _vocals.wav files after processing
 
 # =========================
 # Subtitle Cleaning Options
 # =========================
 # Offset (in seconds) to add to all cleaned subtitle start times (to delay slightly if needed) can be positive or negative
 CLEAN_OFFSET_SECONDS = 0
+
+# If True, create a  WAV file. If False, use video file audio directly. 
+USE_AUDIO_WAV = False
+
+# Add a flag to optionally keep multiple SRT files (accurate, balanced, coverage for example)
+KEEP_ACCURATE_BALANCED_COVERAGE_SRT_FILES = True

@@ -189,9 +189,13 @@ def transcribe_audio(movie_path):
 
     print(f"\n🎞️ Processing: {movie_path.name}")
 
-    # --- 🔧 WAV fix integration point ---
-    safe_input = reencode_wav(movie_path)
-    whisper_ready_wav = convert_wav_for_whisper(safe_input)
+    # Modify transcribe_audio to check USE_AUDIO_WAV flag
+    if config.USE_AUDIO_WAV:
+        # --- 🔧 WAV fix integration point ---
+        safe_input = reencode_wav(movie_path)
+        whisper_ready_wav = convert_wav_for_whisper(safe_input)
+    else:
+        whisper_ready_wav = movie_path  # Use the video file directly
 
     # --- Load model once ---
     model = WhisperModel(
@@ -273,6 +277,14 @@ def transcribe_audio(movie_path):
             srt_path = output_dir / srt_name
             generate_srt(segments, srt_path)
 
+            # Integrate remove_spammy_text_srts.py after each transcription run
+            # Run spammy text removal on the generated SRT file
+            spammy_script = Path(__file__).parent / "remove_spammy_text_srts.py"
+            try:
+                subprocess.run([sys.executable, str(spammy_script)], check=True)
+            except Exception as e:
+                print(f"⚠️ Failed to clean spammy text for {srt_path}: {e}")
+
         except Exception as e:
             print(f"❌ Transcription failed for {run['name'] or 'main'} pass: {e}")
 
@@ -283,14 +295,19 @@ def transcribe_audio(movie_path):
 # --- File collection ---
 def collect_files(base_dir):
     targets = []
+    # Ensure collect_files respects USE_AUDIO_WAV
     for root, dirs, files in os.walk(base_dir):
         dirs[:] = [d for d in dirs if d not in getattr(config, "EXCLUDE_FOLDERS", [])]
         for f in files:
             ext = os.path.splitext(f)[1].lower()
             full_path = os.path.join(root, f)
-            if config.BACKGROUND_SUPPRESSION:
-                if ext == ".wav" and f.endswith("_vocals.wav"):
-                    targets.append(full_path)
+            if config.USE_AUDIO_WAV:
+                if config.BACKGROUND_SUPPRESSION:
+                    if ext == ".wav" and f.endswith("_vocals.wav"):
+                        targets.append(full_path)
+                else:
+                    if ext in config.VIDEO_EXTENSIONS:
+                        targets.append(full_path)
             else:
                 if ext in [".mp4", ".mkv", ".mov", ".avi"]:
                     targets.append(full_path)
@@ -299,31 +316,33 @@ def collect_files(base_dir):
 # --- Cleanup utility ---
 def cleanup_temp_files(movie_path):
     movie_path = Path(movie_path)
-    # Remove temp whisper wav (now stored in movie folder)
-    temp_whisper = movie_path.parent / f"{movie_path.stem}_whisper_ready.wav"
-    if temp_whisper.exists():
+    # Update WAV creation logic to be conditional
+    if config.USE_AUDIO_WAV:
+        # Remove temp whisper wav (now stored in movie folder)
+        temp_whisper = movie_path.parent / f"{movie_path.stem}_whisper_ready.wav"
+        if temp_whisper.exists():
+            if not getattr(config, "KEEP_WAV", False):
+                try:
+                    temp_whisper.unlink()
+                    print(f"🗑️ Deleted temp Whisper WAV: {temp_whisper.name}")
+                except Exception as e:
+                    print(f"⚠️ Could not delete temp Whisper WAV: {e}")
+        # Remove reencoded wav if it exists and is not the original
+        clean_wav = Path(tempfile.gettempdir()) / f"{movie_path.stem}_clean.wav"
+        if clean_wav.exists():
+            try:
+                clean_wav.unlink()
+                print(f"🗑️ Deleted temp clean WAV: {clean_wav.name}")
+            except Exception as e:
+                print(f"⚠️ Could not delete temp clean WAV: {e}")
+        # Remove vocals file if needed and not keeping WAV
         if not getattr(config, "KEEP_WAV", False):
-            try:
-                temp_whisper.unlink()
-                print(f"🗑️ Deleted temp Whisper WAV: {temp_whisper.name}")
-            except Exception as e:
-                print(f"⚠️ Could not delete temp Whisper WAV: {e}")
-    # Remove reencoded wav if it exists and is not the original
-    clean_wav = Path(tempfile.gettempdir()) / f"{movie_path.stem}_clean.wav"
-    if clean_wav.exists():
-        try:
-            clean_wav.unlink()
-            print(f"🗑️ Deleted temp clean WAV: {clean_wav.name}")
-        except Exception as e:
-            print(f"⚠️ Could not delete temp clean WAV: {e}")
-    # Remove vocals file if needed and not keeping WAV
-    if not getattr(config, "KEEP_WAV", False):
-        if movie_path.name.endswith("_vocals.wav") and movie_path.exists():
-            try:
-                movie_path.unlink()
-                print(f"🗑️ Deleted {movie_path.name} after transcription")
-            except Exception as e:
-                print(f"⚠️ Could not delete {movie_path.name}: {e}")
+            if movie_path.name.endswith("_vocals.wav") and movie_path.exists():
+                try:
+                    movie_path.unlink()
+                    print(f"🗑️ Deleted {movie_path.name} after transcription")
+                except Exception as e:
+                    print(f"⚠️ Could not delete {movie_path.name}: {e}")
 
 
 # --- Main ---
