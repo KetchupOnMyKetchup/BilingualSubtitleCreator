@@ -209,25 +209,25 @@ def merge_srts_for_movie(movie_path: Path):
         print(f"🐱 {merged_path.name} already exists, skipping merge.")
         return
 
-    if not accurate_path.exists():
-        print(f"❌ Missing {accurate_path.name}, cannot merge.")
+    if not balanced_path.exists():
+        print(f"❌ Missing {balanced_path.name}, cannot merge.")
         return
 
     print(f"🧩 Merging subtitles for {movie_stem}")
 
-    merged = safe_open_srt(accurate_path)
+    merged = safe_open_srt(balanced_path)
     if not merged:
-        print(f"⚠️ Accurate file had no valid entries; using balanced/coverage as base.")
-        # fall back to balanced if accurate empty
-        if balanced_path.exists():
-            merged = safe_open_srt(balanced_path)
+        print(f"⚠️ Balanced file had no valid entries; using accurate/coverage as base.")
+        # fall back to accurate if accurate empty
+        if accurate_path.exists():
+            merged = safe_open_srt(accurate_path)
         elif coverage_path.exists():
             merged = safe_open_srt(coverage_path)
         else:
             print("❌ No valid SRTs to merge.")
             return
 
-    # Progressive merge: accurate base -> fill from balanced -> fill from coverage
+    # Progressive merge: balanced base -> fill from accurate -> fill from coverage
     if balanced_path.exists():
         print("🔄 Integrating balanced subtitles...")
         balanced = safe_open_srt(balanced_path)

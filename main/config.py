@@ -2,7 +2,7 @@
 # Path & File Settings
 # =========================
 # Base folder for your movies/TV shows
-BASE_DIR = r"\\192.168.1.5\Media\Movies\Bulgarian\Tangled"
+BASE_DIR = r"\\192.168.1.5\Media\Movies\Bulgarian\Up (2009)"
 
 # Folder exclusion list (substrings or exact names)
 EXCLUDE_FOLDERS = [
@@ -43,7 +43,7 @@ BACKGROUND_SUPPRESSION = True            # Use background noise suppression (Dem
 # =========================
 # Whisper / Transcription Settings
 # =========================
-WHISPER_MODEL = "large-v2"            # "small", "medium", "large-v2"
+WHISPER_MODEL = "large-v3-turbo"      # "small", "medium", "large-v2" // See for latest versions: https://github.com/openai/whisper/blob/main/model-card.md
 USE_GPU = True                        # Use GPU if available and sets it to "cuda", otherwise "cpu" in the code
 
 

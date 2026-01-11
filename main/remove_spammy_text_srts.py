@@ -12,7 +12,7 @@ SPAMMY_PATTERN = re.compile(
     r"^(?:[-–]?\s*[А-Яа-яA-Za-z]{1,3}[!.,]?\s+){3,}$|"
 
     # repeated short words separated by comma, dash, or spaces, 3+ times
-    r"^(?:\b([А-Яа-яA-Za-z]{1,3})[!.,]?\b[\s,.-]*){3,}$|"
+    r"^(?:\b([А-Яа-яA-Zazl]{1,3})[!.,]?\b[\s,.-]*){3,}$|"
 
     # same char repeated 6+ times
     r"(.)\1{5,}|"
@@ -30,7 +30,7 @@ SPAMMY_PATTERN = re.compile(
     r"\?{4,}|"
 
     # nonsense words
-    r"\b(?:asdf|qwerty|lolol|hahaha|kkkkk|ahah|hehe|редактор|коректор|субтитров|устройството|абонирайте|абонирате|lol)\b|"
+    r"\b(?:asdf|qwerty|lolol|hahaha|kkkkk|ahah|hehe|редактор|коректор|субтитров|устройството|абонирайте|абонирате|нашия канал|Благодаря ви, че|В .Сухашвили|lol)\b|"
 
     # repeated short English syllables, 2+ times
     r"\b([A-Za-z]{2,3}[-]?\1){2,}\b|"
@@ -41,15 +41,15 @@ SPAMMY_PATTERN = re.compile(
     # long solid word
     r"[A-Za-zА-Яа-яЁё]{20,}|"
 
-    # Add pattern for repeated phrases separated by commas
-    r"(?:\b([А-Яа-яA-Za-z]+),\s?\1\b[,\s]*){3,}",
+    # Generalized pattern to detect "- <text> - <text> - <text>" repeated 3 or more times
+    r"(?:[-–]\s*[А-Яа-яA-Zazl]+\s*){3,}",
 
     re.UNICODE | re.IGNORECASE
 )
 
 # Separate repeated words and emoji checks
 REPEATED_WORDS_PATTERN = re.compile(
-    r"(?:\b(\w+)\b(?:\s+\1\b){2,})", re.UNICODE | re.IGNORECASE
+    r"(?:\b(\w+)\b(?:[-\s,]+\1\b){2,})", re.UNICODE | re.IGNORECASE
 )
 
 EMOJI_PATTERN = re.compile(

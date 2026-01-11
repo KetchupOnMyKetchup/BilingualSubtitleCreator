@@ -207,34 +207,34 @@ def transcribe_audio(movie_path):
     # --- Define transcription passes ---
     if getattr(config, "MULTIPLE_TRANSCRIBE_RUNS", False):
         passes = [
-        {
-            "name": "accurate",
-            "beam_size": 20,
-            "temperature": 0,
-            "condition_on_previous_text": False,
-            "no_speech_threshold": 0.7,
-            "compression_ratio_threshold": 10.0,
-            "chunk_length": 25
-        },
-        {
-            "name": "balanced",
-            "beam_size": 8,
-            "temperature": 0.15,
-            "condition_on_previous_text": False,
-            "no_speech_threshold": 0.35,
-            "compression_ratio_threshold": 6.0,
-            "chunk_length": 30
-        },
-        {
-            "name": "coverage",
-            "beam_size": 25,
-            "temperature": 0.2,
-            "condition_on_previous_text": True,
-            "no_speech_threshold": 0.15,
-            "compression_ratio_threshold": 8.0,
-            "chunk_length": 15
-        },
-    ]
+            {
+                "name": "accurate",
+                "beam_size": 20,
+                "temperature": 0,
+                "condition_on_previous_text": False,
+                "no_speech_threshold": 0.7,
+                "compression_ratio_threshold": 10.0,
+                "chunk_length": 25
+            },
+            {
+                "name": "balanced",
+                "beam_size": 8,
+                "temperature": 0.15,
+                "condition_on_previous_text": False,
+                "no_speech_threshold": 0.25,
+                "compression_ratio_threshold": 6.0,
+                "chunk_length": 30
+            },
+            {
+                "name": "coverage",
+                "beam_size": 25,
+                "temperature": 0.2,
+                "condition_on_previous_text": True,
+                "no_speech_threshold": 0.15,
+                "compression_ratio_threshold": 7.0,
+                "chunk_length": 20
+            },
+        ]
 
     else:
         passes = [
