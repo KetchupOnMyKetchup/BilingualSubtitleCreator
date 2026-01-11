@@ -39,7 +39,10 @@ SPAMMY_PATTERN = re.compile(
     r"\b([А-Яа-я]{2,3}[-]?\1){2,}\b|"
 
     # long solid word
-    r"[A-Za-zА-Яа-яЁё]{20,}",
+    r"[A-Za-zА-Яа-яЁё]{20,}|"
+
+    # Add pattern for repeated phrases separated by commas
+    r"(?:\b([А-Яа-яA-Za-z]+),\s?\1\b[,\s]*){3,}",
 
     re.UNICODE | re.IGNORECASE
 )
@@ -90,6 +93,13 @@ def clean_srt_file(srt_path: Path):
         except Exception as e2:
             print(f"⚠️ Could not open {srt_path}: {e2}")
             return False
+
+    # Optimize double space replacement for large SRT files
+    all_text = "\n".join(sub.text for sub in subs)
+    all_text = re.sub(r"\s{2,}", " ", all_text)
+    updated_texts = all_text.split("\n")
+    for sub, updated_text in zip(subs, updated_texts):
+        sub.text = updated_text
 
     # Keep only valid, non-spammy subtitles
     cleaned = [s for s in subs if _valid_sub(s)]
