@@ -8,17 +8,33 @@ import config
 def find_movie_files():
     """
     Locate all movie files in BASE_DIR that match VIDEO_EXTENSIONS.
-    Honors SCAN_FILES_IN_BASEDIR and RECURSIVE.
+    Always recurses into subdirectories (same behavior as transcribe.py).
+    Respects SCAN_FILES_IN_BASEDIR and EXCLUDE_FOLDERS.
     """
-    base = Path(config.BASE_DIR)
+    base = Path(config.BASE_DIR).resolve()
     exts = [ext.lower() for ext in getattr(config, "VIDEO_EXTENSIONS", [".mp4", ".mkv", ".mov", ".avi", ".mpg", ".ts", ".webm"])]
+    exclude_folders = set(getattr(config, "EXCLUDE_FOLDERS", []))
 
     files = []
-    if getattr(config, "SCAN_FILES_IN_BASEDIR", True):
-        if base.is_dir():
-            files.extend([p for p in base.iterdir() if p.suffix.lower() in exts and p.is_file()])
-    if getattr(config, "RECURSIVE", False):
-        files.extend([p for p in base.rglob("*") if p.suffix.lower() in exts and p.is_file()])
+    
+    # Always use os.walk to recurse into all subfolders (matching transcribe.py behavior)
+    for root, dirs, filenames in os.walk(base):
+        # Remove excluded folders from traversal
+        dirs[:] = [d for d in dirs if d not in exclude_folders]
+        
+        # At base level, check SCAN_FILES_IN_BASEDIR setting
+        current_path = Path(root).resolve()
+        is_base_level = (current_path == base)
+        
+        if is_base_level and not getattr(config, "SCAN_FILES_IN_BASEDIR", True):
+            # Skip files directly in base dir if SCAN_FILES_IN_BASEDIR is False
+            # But continue walking into subdirectories
+            continue
+        
+        # Add files from this directory
+        for f in filenames:
+            if Path(f).suffix.lower() in exts:
+                files.append(current_path / f)
 
     # dedupe & sort
     files = sorted({p.resolve() for p in files}, key=lambda p: p.name.lower())
@@ -203,6 +219,11 @@ def merge_srts_for_movie(movie_path: Path):
     """
     Merge BG_<stem>_accurate.srt + fill from balanced + fill from coverage.
     Output: BG_<stem>.srt
+    
+    This function is idempotent and resumable:
+    - Only merges if at least one intermediate SRT (_accurate or _balanced) exists
+    - Skips if final merged SRT already exists
+    - Can be called multiple times without issues
     """
     movie_stem = movie_path.stem
     srt_dir = movie_path.parent
@@ -212,52 +233,61 @@ def merge_srts_for_movie(movie_path: Path):
     coverage_path = srt_dir / f"BG_{movie_stem}_coverage.srt"
     merged_path   = srt_dir / f"BG_{movie_stem}.srt"
 
+    # Check if final merged SRT already exists
     if merged_path.exists():
-        print(f"🐱 {merged_path.name} already exists, skipping merge.")
-        return
+        print(f"✅ {merged_path.name} already exists, skipping merge.")
+        return True
 
-    if not balanced_path.exists():
-        print(f"❌ Missing {balanced_path.name}, cannot merge.")
-        return
+    # Check if we have at least one intermediate SRT to merge
+    has_intermediate = accurate_path.exists() or balanced_path.exists()
+    if not has_intermediate:
+        if getattr(config, "VERBOSE", False):
+            print(f"⏭️ No intermediate SRTs for {movie_stem}, skipping merge.")
+        return False
 
     print(f"🧩 Merging subtitles for {movie_stem}")
 
-    # Initialize merged with balanced subtitles
-    merged = safe_open_srt(balanced_path)
-    if not merged:
-        print(f"⚠️ Balanced file had no valid entries; using accurate/coverage as base.")
-        # Fall back to accurate if balanced is empty
-        if accurate_path.exists():
-            merged = safe_open_srt(accurate_path)
-        elif coverage_path.exists():
-            merged = safe_open_srt(coverage_path)
-        else:
-            print("❌ No valid SRTs to merge.")
-            return
+    # Initialize merged with balanced subtitles (preferred base)
+    if balanced_path.exists():
+        merged = safe_open_srt(balanced_path)
+        print(f"📄 Using {balanced_path.name} as merge base")
+    elif accurate_path.exists():
+        merged = safe_open_srt(accurate_path)
+        print(f"📄 Using {accurate_path.name} as merge base (balanced not found)")
+    else:
+        print(f"❌ No valid SRTs to merge for {movie_stem}.")
+        return False
 
-    # Progressive merge: balanced base -> fill from accurate -> fill from coverage
-    if accurate_path.exists():
-        print("🔄 Integrating accurate subtitles...")
+    if not merged:
+        print(f"⚠️ Merge base had no valid entries for {movie_stem}.")
+        return False
+
+    # Progressive merge: balanced/accurate base -> fill from the other -> fill from coverage
+    if accurate_path.exists() and balanced_path.exists():
+        # Both exist: merge accurate into balanced
+        print(f"🔄 Integrating {accurate_path.name}...")
         accurate = safe_open_srt(accurate_path)
         _merge_in_gaps(merged, accurate, "accurate")
-    else:
-        print("⏭️ Skipping accurate (file not found)")
 
     if coverage_path.exists():
-        print("🔄 Integrating coverage subtitles...")
+        print(f"🔄 Integrating {coverage_path.name}...")
         coverage = safe_open_srt(coverage_path)
         _merge_in_gaps(merged, coverage, "coverage")
-    else:
-        print("⏭️ Skipping coverage (file not found)")
 
     # Finalize and save
     merged.clean_indexes()
-    merged.save(str(merged_path), encoding="utf-8")
-    print(f"💾 Merged file saved → {merged_path.name}")
+    try:
+        merged.save(str(merged_path), encoding="utf-8")
+        print(f"💾 Merged file saved → {merged_path.name}")
+    except Exception as e:
+        print(f"❌ Failed to save merged SRT for {movie_stem}: {e}")
+        return False
 
-    # Cleanup extra .srt files
+    # Cleanup extra .srt files only if merge was successful
     if not getattr(config, "KEEP_ACCURATE_BALANCED_COVERAGE_SRT_FILES", False):
-        delete_model_srts(Path(merged_path))
+        delete_model_srts(merged_path)
+
+    return True
 
 def main():
     if not getattr(config, "MULTIPLE_TRANSCRIBE_RUNS", False):
@@ -270,8 +300,26 @@ def main():
         print("❌ No movie files found. Check BASE_DIR or VIDEO_EXTENSIONS.")
         return
 
-    for movie in movie_files:
-        merge_srts_for_movie(movie)
+    print(f"📋 Found {len(movie_files)} movie file(s) to process\n")
+    
+    merged_count = 0
+    skipped_count = 0
+    failed_count = 0
+
+    for idx, movie in enumerate(movie_files, 1):
+        print(f"[{idx}/{len(movie_files)}] Processing: {movie.parent.name}/{movie.name}")
+        try:
+            result = merge_srts_for_movie(movie)
+            if result:
+                merged_count += 1
+            else:
+                skipped_count += 1
+        except Exception as e:
+            print(f"❌ Error merging {movie.name}: {e}")
+            failed_count += 1
+        print()  # Blank line for readability
+    
+    print(f"✅ Merge complete: {merged_count} merged, {skipped_count} skipped, {failed_count} failed")
 
 
 if __name__ == "__main__":

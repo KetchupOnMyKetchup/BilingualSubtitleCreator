@@ -65,16 +65,17 @@ def convert_wav_for_whisper(vocals_path: Path) -> Path:
 
 
 # --- Subtitle utilities ---
-def has_existing_srt(movie_path):
+def has_final_srt(movie_path):
+    """Check if the FINAL merged SRT file exists (not intermediate _accurate/_balanced)."""
     stem = Path(movie_path).stem
     if stem.endswith("_vocals"):
         stem = stem[:-7]
     
-    srt_name = f"{OUTPUT_PREFIX}{stem}"
-
-    for file in os.listdir(Path(movie_path).parent):
-        if file.startswith(srt_name) and file.endswith(".srt"):
-            return True
+    # Final SRT file should be named like: BG_MovieName.srt (no suffix like _accurate or _balanced)
+    final_srt_name = f"{OUTPUT_PREFIX}{stem}.srt"
+    final_srt_path = Path(movie_path).parent / final_srt_name
+    
+    return final_srt_path.exists()
 
 
 def compute_duration(text):
@@ -177,8 +178,9 @@ def transcribe_audio(movie_path):
     output_dir = movie_path.parent
     stem = movie_path.stem[:-7] if movie_path.stem.endswith("_vocals") else movie_path.stem
 
-    if has_existing_srt(movie_path):
-        print(f"⏭ Skipping {movie_path.name} (SRT already exists)")
+    # Only skip if the FINAL merged SRT exists, not intermediate _accurate/_balanced files
+    if has_final_srt(movie_path):
+        print(f"⏭ Skipping {movie_path.name} (final SRT already exists)")
         if config.KEEP_WAV == False and movie_path.name.endswith("_vocals.wav"):
             try:
                 movie_path.unlink()
@@ -196,6 +198,7 @@ def transcribe_audio(movie_path):
         whisper_ready_wav = convert_wav_for_whisper(safe_input)
     else:
         whisper_ready_wav = movie_path  # Use the video file directly
+        safe_input = None  # No WAV conversion needed
 
     # --- Load model once ---
     model = WhisperModel(
@@ -243,6 +246,19 @@ def transcribe_audio(movie_path):
 
     # --- Run transcription(s) ---
     for run in passes:
+        # Decide output name based on pass
+        if run["name"]:
+            srt_name = f"{OUTPUT_PREFIX}{stem}_{run['name']}.srt"
+        else:
+            srt_name = f"{OUTPUT_PREFIX}{stem}.srt"
+
+        srt_path = output_dir / srt_name
+        
+        # Skip this pass if the output SRT already exists
+        if srt_path.exists():
+            print(f"⏭️ Skipping {run['name'] or 'single'} pass (output already exists: {srt_name})")
+            continue
+
         print(f"🔊 Transcribing ({run['name'] or 'single pass'}) with beam={run['beam_size']} temp={run['temperature']}")
         segments = []
 
@@ -268,20 +284,13 @@ def transcribe_audio(movie_path):
                 segments.append(segment)
                 print(f"[{format_time(segment.start)} -> {format_time(segment.end)}] {segment.text.strip()}")
 
-            # Decide output name based on pass
-            if run["name"]:
-                srt_name = f"{OUTPUT_PREFIX}{stem}_{run['name']}.srt"
-            else:
-                srt_name = f"{OUTPUT_PREFIX}{stem}.srt"
-
-            srt_path = output_dir / srt_name
             generate_srt(segments, srt_path)
 
             # Integrate remove_spammy_text_srts.py after each transcription run
-            # Run spammy text removal on the generated SRT file
+            # Run spammy text removal on the specific SRT file that was just created
             spammy_script = Path(__file__).parent / "remove_spammy_text_srts.py"
             try:
-                subprocess.run([sys.executable, str(spammy_script)], check=True)
+                subprocess.run([sys.executable, str(spammy_script), str(srt_path)], check=True)
             except Exception as e:
                 print(f"⚠️ Failed to clean spammy text for {srt_path}: {e}")
 

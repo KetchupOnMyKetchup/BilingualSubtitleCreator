@@ -134,27 +134,42 @@ def find_srt_files(base_dir: Path):
     return sorted({f.resolve() for f in files}, key=lambda f: f.name.lower())
 
 def main():
+    import sys
     print("🧠 remove_spammy_text_srts.py is being executed!")
 
-    base_dir = Path(getattr(config, "BASE_DIR", "."))
-    srt_files = find_srt_files(base_dir)
-
-    if not srt_files:
-        print("ℹ️ No SRT files found to clean.")
-        return
-
-    print(f"🧹🧹 Cleaning spam from {len(srt_files)} subtitle files in {base_dir}...")
-
-    cleaned_count = 0
-    skipped_count = 0
-
-    for srt in srt_files:
-        if clean_srt_file(srt):
-            cleaned_count += 1
+    # Check if a specific SRT file was passed as argument
+    if len(sys.argv) > 1 and sys.argv[1].endswith(".srt"):
+        # Process only the specified file
+        srt_file = Path(sys.argv[1])
+        if srt_file.exists() and srt_file.is_file():
+            print(f"🧹 Cleaning spam from: {srt_file.name}")
+            if clean_srt_file(srt_file):
+                print(f"✅ Finished cleaning: 1 cleaned, 0 skipped.")
+            else:
+                print(f"✅ Finished cleaning: 0 cleaned, 1 skipped.")
         else:
-            skipped_count += 1
+            print(f"⚠️ SRT file not found: {srt_file}")
+    else:
+        # Original behavior: process all SRT files
+        base_dir = Path(getattr(config, "BASE_DIR", "."))
+        srt_files = find_srt_files(base_dir)
 
-    print(f"✅ Finished cleaning: {cleaned_count} cleaned, {skipped_count} skipped.")
+        if not srt_files:
+            print("ℹ️ No SRT files found to clean.")
+            return
+
+        print(f"🧹🧹 Cleaning spam from {len(srt_files)} subtitle files in {base_dir}...")
+
+        cleaned_count = 0
+        skipped_count = 0
+
+        for srt in srt_files:
+            if clean_srt_file(srt):
+                cleaned_count += 1
+            else:
+                skipped_count += 1
+
+        print(f"✅ Finished cleaning: {cleaned_count} cleaned, {skipped_count} skipped.")
 
 if __name__ == "__main__":
     main()
