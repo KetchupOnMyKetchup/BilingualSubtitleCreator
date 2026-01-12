@@ -83,90 +83,97 @@ def _overlaps(a, b):
     return (a.start.ordinal < b.end.ordinal) and (a.end.ordinal > b.start.ordinal)
 
 
-def _merge_in_gaps(merged: pysrt.SubRipFile, source: pysrt.SubRipFile, label: str, tolerance_ms: int = 100) -> int:
+def _merge_in_gaps(
+    merged: pysrt.SubRipFile,
+    source: pysrt.SubRipFile,
+    label: str,
+    tolerance_ms: int = 100
+) -> int:
     """
-    Add items from 'source' that fall completely inside gaps between items of 'merged'.
-    Uses a two-pointer sweep for O(N) behavior on sorted inputs.
-    Returns number of items added.
+    Merge source subtitles into gaps of the merged subtitle list.
+    
+    Strategy:
+    1. Find all gaps between consecutive merged items
+    2. For each gap, collect all source items that fit (with no/minimal overlap)
+    3. For items that touch or slightly overlap boundaries, include them if they enhance coverage
+    4. Return the total number of items added
     """
+    
     if not merged:
-        # If merged is empty, just copy everything (already filtered)
-        added = len(source)
         merged.extend(source)
         merged.sort(key=lambda s: (s.start.ordinal, s.end.ordinal))
         merged.clean_indexes()
-        print(f"✅ Added {added} subs from {label} (merged was empty)")
-        return added
+        print(f"✅ Added {len(source)} subs from {label} (merged was empty)")
+        return len(source)
 
-    base = list(merged)  # snapshot to define gaps; we won't mutate during iteration
-    src = list(source)   # list for pointer access
-    n = len(src)
-    j = 0                # pointer into source
-    added_entries = []
+    merged.sort(key=lambda s: (s.start.ordinal, s.end.ordinal))
+    source.sort(key=lambda s: (s.start.ordinal, s.end.ordinal))
 
-    # Precompute last possible time to bound windows that go to EOF
-    # (Not required, but helpful for reasoning. We just use None for open-ended.)
-    for i, sub in enumerate(base):
-        if not _valid_item(sub):
+    merged_items = list(merged)
+    source_items = list(source)
+    
+    # Track which source items we've already added to avoid duplicates
+    added_indices = set()
+    
+    # Iterate through gaps between consecutive merged items
+    for i in range(len(merged_items) - 1):
+        left = merged_items[i]
+        right = merged_items[i + 1]
+
+        if not (_valid_item(left) and _valid_item(right)):
             continue
 
-        # Define gap window (gap_start, gap_end)
-        gap_start = _shift_safe(sub.end, +tolerance_ms)
-        next_start = base[i + 1].start if i + 1 < len(base) else None
-        gap_end = _shift_safe(next_start, -tolerance_ms) if next_start else None
+        # Define gap boundaries with tolerance
+        gap_start_ms = left.end.ordinal + tolerance_ms
+        gap_end_ms = right.start.ordinal - tolerance_ms
 
-        if gap_start is None:
-            continue  # malformed base end
+        # No valid gap if boundaries cross
+        if gap_start_ms >= gap_end_ms:
+            continue
 
-        # Advance j until src[j] could possibly fit after gap_start
-        while j < n and _valid_item(src[j]) and _time_leq(src[j].end, gap_start):
-            j += 1
-
-        k = j
-        # Examine candidates whose start is before gap_end (or any if open-ended)
-        while k < n:
-            cand = src[k]
+        # Collect all source items that fit in this gap
+        for src_idx, cand in enumerate(source_items):
+            if src_idx in added_indices:
+                continue  # Already added
             if not _valid_item(cand):
-                k += 1
                 continue
 
-            # if cand starts beyond gap_end, break (source is sorted)
-            if gap_end is not None and _time_ge(cand.start, gap_end):
-                break
+            cand_start_ms = cand.start.ordinal
+            cand_end_ms = cand.end.ordinal
 
-            # Must start after/equal gap_start
-            if not _time_ge(cand.start, gap_start):
-                k += 1
+            # ---- CASE 1: Candidate fits completely in the gap (clean fit) ----
+            if cand_start_ms >= gap_start_ms and cand_end_ms <= gap_end_ms:
+                merged_items.append(cand)
+                added_indices.add(src_idx)
                 continue
 
-            # Must end before/equal gap_end (unless open-ended)
-            if gap_end is not None and not _time_leq(cand.end, gap_end):
-                k += 1
-                continue
+            # ---- CASE 2: Candidate slightly overlaps gap boundaries (minor tolerance) ----
+            # Allow items that have slight overlap (< 200ms) with boundaries
+            gap_overlap_tolerance_ms = 200
+            
+            # Check if item mostly fits in the gap (starts before gap_end and ends after gap_start)
+            if (cand_start_ms < gap_end_ms and cand_end_ms > gap_start_ms):
+                # Calculate overlap with gap boundaries
+                overlap_left = max(0, gap_start_ms - cand_start_ms)
+                overlap_right = max(0, cand_end_ms - gap_end_ms)
+                
+                # If overlaps are minimal, include it
+                if overlap_left < gap_overlap_tolerance_ms and overlap_right < gap_overlap_tolerance_ms:
+                    merged_items.append(cand)
+                    added_indices.add(src_idx)
+                    continue
 
-            # Double-check: ensure it doesn't overlap anything already in base snapshot
-            # Given it's in the gap, overlap is unlikely, but we still guard.
-            overlaps_base = False
-            # Only check neighbors around the gap to keep it cheap:
-            # previous base sub (i) and next base sub (i+1)
-            if _overlaps(cand, sub):
-                overlaps_base = True
-            elif i + 1 < len(base) and _overlaps(cand, base[i + 1]):
-                overlaps_base = True
-
-            if not overlaps_base:
-                added_entries.append(cand)
-
-            k += 1
-
-        # Next gap will start after this base item; keep j where it is (monotonic)
-
-    if added_entries:
-        merged.extend(added_entries)
+    # Update merged with new items
+    if added_indices:
+        merged.clear()
+        merged.extend(merged_items)
         merged.sort(key=lambda s: (s.start.ordinal, s.end.ordinal))
         merged.clean_indexes()
-    print(f"✅ Added {len(added_entries)} subs from {label}")
-    return len(added_entries)
+
+    added_count = len(added_indices)
+    print(f"✅ Added {added_count} subs from {label}")
+    return added_count
+
 
 def delete_model_srts(base_srt_path: Path):
     """
@@ -215,10 +222,11 @@ def merge_srts_for_movie(movie_path: Path):
 
     print(f"🧩 Merging subtitles for {movie_stem}")
 
+    # Initialize merged with balanced subtitles
     merged = safe_open_srt(balanced_path)
     if not merged:
         print(f"⚠️ Balanced file had no valid entries; using accurate/coverage as base.")
-        # fall back to accurate if accurate empty
+        # Fall back to accurate if balanced is empty
         if accurate_path.exists():
             merged = safe_open_srt(accurate_path)
         elif coverage_path.exists():
@@ -228,12 +236,12 @@ def merge_srts_for_movie(movie_path: Path):
             return
 
     # Progressive merge: balanced base -> fill from accurate -> fill from coverage
-    if balanced_path.exists():
-        print("🔄 Integrating balanced subtitles...")
-        balanced = safe_open_srt(balanced_path)
-        _merge_in_gaps(merged, balanced, "balanced")
+    if accurate_path.exists():
+        print("🔄 Integrating accurate subtitles...")
+        accurate = safe_open_srt(accurate_path)
+        _merge_in_gaps(merged, accurate, "accurate")
     else:
-        print("⏭️ Skipping balanced (file not found)")
+        print("⏭️ Skipping accurate (file not found)")
 
     if coverage_path.exists():
         print("🔄 Integrating coverage subtitles...")
@@ -242,6 +250,7 @@ def merge_srts_for_movie(movie_path: Path):
     else:
         print("⏭️ Skipping coverage (file not found)")
 
+    # Finalize and save
     merged.clean_indexes()
     merged.save(str(merged_path), encoding="utf-8")
     print(f"💾 Merged file saved → {merged_path.name}")

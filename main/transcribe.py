@@ -225,15 +225,15 @@ def transcribe_audio(movie_path):
                 "compression_ratio_threshold": 6.0,
                 "chunk_length": 30
             },
-            {
-                "name": "coverage",
-                "beam_size": 25,
-                "temperature": 0.2,
-                "condition_on_previous_text": True,
-                "no_speech_threshold": 0.15,
-                "compression_ratio_threshold": 7.0,
-                "chunk_length": 20
-            },
+            # {
+            #     "name": "coverage",
+            #     "beam_size": 25,
+            #     "temperature": 0.2,
+            #     "condition_on_previous_text": True,
+            #     "no_speech_threshold": 0.15,
+            #     "compression_ratio_threshold": 7.0,
+            #     "chunk_length": 20
+            # },
         ]
 
     else:

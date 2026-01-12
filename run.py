@@ -1,6 +1,7 @@
 import subprocess
 import sys
 from datetime import datetime
+import time
 
 # -------------------------
 # CONFIG: paths to your scripts
@@ -33,13 +34,27 @@ def run_script(script):
         return False
 
 def main():
+    start_time = time.time()
     log("=== Starting full pipeline ===")
     for script in SCRIPTS:
         success = run_script(script)
         if not success:
             log("⛔ Pipeline halted due to error.")
             break
-    log("=== Pipeline finished ===")
+    
+    elapsed_time = time.time() - start_time
+    hours = int(elapsed_time // 3600)
+    minutes = int((elapsed_time % 3600) // 60)
+    seconds = int(elapsed_time % 60)
+    
+    if hours > 0:
+        time_str = f"{hours}h {minutes}m {seconds}s"
+    elif minutes > 0:
+        time_str = f"{minutes}m {seconds}s"
+    else:
+        time_str = f"{seconds}s"
+    
+    log(f"=== Pipeline finished === (Total time: {time_str})")
 
 if __name__ == "__main__":
     main()
