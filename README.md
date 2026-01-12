@@ -73,6 +73,16 @@ The main workflow is orchestrated by `run.py`, which calls the following scripts
       - For example: [Soul 2020.bg.srt](<Samples/Soul 2020.bg.srt>)
   Each script checks for existing output files and skips processing if the expected result already exists, making the workflow resumable and efficient.
 
+
+### Delete Existing SRT files and Run Test for Delete
+
+#### Delete Existing SRT files
+1. `./delete_srts.py`
+
+#### Run Test for Delete
+1. `pip install pytest`
+1. `pytest test_delete_srts.py -v`
+
 ### Final Product
 
 <img width="1151" height="632" alt="image" src="https://github.com/user-attachments/assets/2e2e8dae-a006-47d4-9548-92ff7ec0de83" />

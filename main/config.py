@@ -2,18 +2,19 @@
 # Path & File Settings
 # =========================
 # Base folder for your movies/TV shows
-BASE_DIR = r"\\192.168.1.5\Media\Movies\Bulgarian\Up (2009)"
+BASE_DIR = r"\\192.168.1.5\Media\Movies\Bulgarian"
 
 # Folder exclusion list (substrings or exact names)
 EXCLUDE_FOLDERS = [
     "Stargate Atlantis",
     "Stargate SG-1",
     "Stargate Universe",
-    "Avatar.The.Last.Airbender.S01-S03.TVRIP.x264.BGAUDiO-GOD",
-    "Soul",
     "Ratatouille",
-    "Cars 3",
     "Clueless (1995)",
+    "Zootopia (2016)",
+    "Frozen (2013)",
+    "Tangled",
+    "Robin Hood (1973)",
 ]
 
 # =========================
@@ -87,4 +88,4 @@ CLEAN_OFFSET_SECONDS = 0
 USE_AUDIO_WAV = False
 
 # Add a flag to optionally keep multiple SRT files (accurate, balanced, coverage for example)
-KEEP_ACCURATE_BALANCED_COVERAGE_SRT_FILES = True
+KEEP_ACCURATE_BALANCED_COVERAGE_SRT_FILES = False
