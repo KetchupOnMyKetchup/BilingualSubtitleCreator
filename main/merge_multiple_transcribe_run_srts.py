@@ -323,4 +323,18 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    
+    if len(sys.argv) > 1:
+        # Single movie mode: process specific movie file
+        movie_path = Path(sys.argv[1])
+        if movie_path.exists():
+            print(f"Processing single movie: {movie_path.name}")
+            result = merge_srts_for_movie(movie_path)
+            sys.exit(0 if result else 1)
+        else:
+            print(f"Error: Movie file not found: {movie_path}")
+            sys.exit(1)
+    else:
+        # Process all movies
+        main()

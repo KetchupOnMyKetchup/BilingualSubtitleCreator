@@ -201,11 +201,26 @@ def transcribe_audio(movie_path):
         safe_input = None  # No WAV conversion needed
 
     # --- Load model once ---
-    model = WhisperModel(
-        config.WHISPER_MODEL,
-        device="cuda" if config.USE_GPU else "cpu",
-        compute_type=config.COMPUTE_TYPE
-    )
+    try:
+        model = WhisperModel(
+            config.WHISPER_MODEL,
+            device="cuda" if config.USE_GPU else "cpu",
+            compute_type=config.COMPUTE_TYPE
+        )
+        print(f"✅ Model loaded successfully")
+    except Exception as e:
+        print(f"❌ Failed to load Whisper model: {e}")
+        print(f"⚠️ Attempting to fall back to CPU mode...")
+        try:
+            model = WhisperModel(
+                config.WHISPER_MODEL,
+                device="cpu",
+                compute_type="int8"  # Fallback to lighter compute type
+            )
+            print(f"✅ Model loaded in fallback CPU mode")
+        except Exception as e2:
+            print(f"❌ Fallback failed: {e2}")
+            return None
 
     # --- Define transcription passes ---
     if getattr(config, "MULTIPLE_TRANSCRIBE_RUNS", False):
@@ -264,6 +279,7 @@ def transcribe_audio(movie_path):
 
         vad_params = dict(min_silence_duration_ms=500, threshold=0.4)
         try:
+            print(f"📝 Transcribing audio file: {whisper_ready_wav.name}")
             result = model.transcribe(
                 str(whisper_ready_wav),
                 language=config.LANG_PREFIX.lower(),
@@ -285,6 +301,7 @@ def transcribe_audio(movie_path):
                 print(f"[{format_time(segment.start)} -> {format_time(segment.end)}] {segment.text.strip()}")
 
             generate_srt(segments, srt_path)
+            print(f"✅ {run['name'] or 'Transcription'} pass completed successfully")
 
             # Integrate remove_spammy_text_srts.py after each transcription run
             # Run spammy text removal on the specific SRT file that was just created

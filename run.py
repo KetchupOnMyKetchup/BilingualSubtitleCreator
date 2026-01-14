@@ -4,36 +4,17 @@ from datetime import datetime
 import time
 
 # -------------------------
-# CONFIG: paths to your scripts
+# CONFIG: New per-movie pipeline
 # -------------------------
-SCRIPTS = [
-    "main/extract_vocals_to_wav.py",
-    "main/transcribe.py",
-    "main/remove_spammy_text_srts.py",
-    "main/merge_multiple_transcribe_run_srts.py",
-    "main/translate_subs.py",
-    "main/merge_subs.py"
-]
+# Instead of running all movies through one step at a time,
+# we now process one movie completely through all steps,
+# then move to the next movie.
 
-MAX_RETRIES = 25  # Number of retry attempts if pipeline fails
+MAX_RETRIES = 3  # Number of retry attempts if pipeline fails
 
 def log(msg):
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{ts}] {msg}")
-
-def run_script(script):
-    log(f"▶ Starting {script}")
-    try:
-        # subprocess.run will raise CalledProcessError if script fails
-        subprocess.run([sys.executable, script], check=True)
-        log(f"✅ Finished {script}\n")
-        return True
-    except subprocess.CalledProcessError as e:
-        log(f"❌ Script {script} failed with exit code {e.returncode}. Exception: {e}")
-        return False
-    except FileNotFoundError:
-        log(f"❌ Script {script} not found.")
-        return False
 
 def main():
     start_time = time.time()
@@ -41,27 +22,30 @@ def main():
     
     while attempt <= MAX_RETRIES:
         try:
-            log(f"=== Starting full pipeline (Attempt {attempt}/{MAX_RETRIES}) ===")
+            log(f"=== Starting per-movie pipeline (Attempt {attempt}/{MAX_RETRIES}) ===")
             
-            for script in SCRIPTS:
-                success = run_script(script)
-                if not success:
-                    log("⛔ Pipeline halted due to error.")
-                    raise Exception(f"Script {script} failed")
+            # Run the new per-movie orchestration script
+            result = subprocess.run(
+                [sys.executable, "main/process_single_movie.py"],
+                check=True
+            )
             
             # If we got here, pipeline succeeded
             log("✅ Pipeline completed successfully!")
             break
             
-        except Exception as e:
+        except subprocess.CalledProcessError as e:
             if attempt < MAX_RETRIES:
-                log(f"⚠️ Pipeline failed: {e}")
+                log(f"⚠️ Pipeline failed with exit code {e.returncode}")
                 log(f"🔄 Retrying in 5 seconds... (Attempt {attempt + 1}/{MAX_RETRIES})")
                 time.sleep(5)
                 attempt += 1
             else:
                 log(f"❌ Pipeline failed after {MAX_RETRIES} attempts. Giving up.")
                 break
+        except KeyboardInterrupt:
+            log("⏸️ Pipeline interrupted by user")
+            break
     
     elapsed_time = time.time() - start_time
     hours = int(elapsed_time // 3600)
@@ -76,7 +60,6 @@ def main():
         time_str = f"{seconds}s"
     
     log(f"=== Pipeline finished === (Total time: {time_str})")
-    log(f"=== Pipeline finished === (Total retries during run: {attempt - 1})")
 
 if __name__ == "__main__":
     main()

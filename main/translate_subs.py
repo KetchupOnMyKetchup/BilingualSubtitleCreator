@@ -204,4 +204,19 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    
+    if len(sys.argv) > 1:
+        # Single movie mode: process specific movie file
+        movie_path = sys.argv[1]
+        if os.path.exists(movie_path):
+            folder_path = os.path.dirname(movie_path)
+            movie_file = os.path.basename(movie_path)
+            print(f"Processing single movie: {movie_file}")
+            process_movie(folder_path, movie_file)
+        else:
+            print(f"Error: Movie file not found: {movie_path}")
+            sys.exit(1)
+    else:
+        # Process all movies
+        main()

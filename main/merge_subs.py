@@ -179,4 +179,18 @@ def main():
     logger.info("=== Subtitle merge run finished ===")
 
 if __name__ == "__main__":
-    main()
+    import sys
+    
+    if len(sys.argv) > 1:
+        # Single movie mode: process specific movie file
+        movie_path = sys.argv[1]
+        if os.path.exists(movie_path):
+            folder_path = os.path.dirname(movie_path)
+            print(f"Processing single movie folder: {folder_path}")
+            process_folder(folder_path)
+        else:
+            logger.error(f"Movie file not found: {movie_path}")
+            sys.exit(1)
+    else:
+        # Process all movies
+        main()
