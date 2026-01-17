@@ -60,6 +60,7 @@ def main():
         time_str = f"{seconds}s"
     
     log(f"=== Pipeline finished === (Total time: {time_str})")
+    log(f"=== Pipeline finished on (Attempt {attempt + 1}/{MAX_RETRIES})")
 
 if __name__ == "__main__":
     main()

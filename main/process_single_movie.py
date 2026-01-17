@@ -12,6 +12,7 @@ This script handles one movie file completely through all steps:
 Call with: python process_single_movie.py <movie_file_path>
 """
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -191,30 +192,37 @@ def find_movies(base_dir: Path) -> list:
     - SCAN_FILES_IN_BASEDIR
     - EXCLUDE_FOLDERS
     - VIDEO_EXTENSIONS
+    
+    Returns a deduplicated, sorted list of unique movie files.
     """
     base = Path(base_dir).resolve()
     exts = [ext.lower() for ext in getattr(config, "VIDEO_EXTENSIONS", 
                                           [".mp4", ".mkv", ".mov", ".avi", ".mpg", ".ts", ".webm"])]
     exclude_folders = set(getattr(config, "EXCLUDE_FOLDERS", []))
     
-    files = []
+    files = set()  # Use set to prevent duplicates
     
     for root, dirs, filenames in os.walk(base):
-        # Remove excluded folders from traversal
+        # Remove excluded folders from traversal (prevents descending into them)
         dirs[:] = [d for d in dirs if d not in exclude_folders]
         
-        # Check SCAN_FILES_IN_BASEDIR at base level
+        # Check SCAN_FILES_IN_BASEDIR at base level only
         current_path = Path(root).resolve()
         is_base_level = (current_path == base)
-        if is_base_level and not getattr(config, "SCAN_FILES_IN_BASEDIR", True):
-            continue
         
-        # Add matching files
-        for f in filenames:
-            if Path(f).suffix.lower() in exts:
-                files.append(current_path / f)
+        # Skip base level files if SCAN_FILES_IN_BASEDIR is False
+        if is_base_level and not getattr(config, "SCAN_FILES_IN_BASEDIR", True):
+            # Don't process files at base level, but continue walking subdirs
+            pass
+        else:
+            # Add matching files from this directory
+            for filename in filenames:
+                if Path(filename).suffix.lower() in exts:
+                    file_path = (current_path / filename).resolve()
+                    files.add(file_path)
     
-    return sorted(files, key=lambda p: p.parent.name)  # Group by folder
+    # Return sorted unique files
+    return sorted(files, key=lambda p: (p.parent.name, p.name))
 
 
 def main():
@@ -243,6 +251,9 @@ def main():
     
     for idx, movie in enumerate(movies, 1):
         try:
+            print(f"\n{'='*70}")
+            log(f"[{idx}/{len(movies)}] Starting: {movie.parent.name}/{movie.name}", "INFO")
+            print(f"{'='*70}")
             result = process_movie(movie)
             if result:
                 processed += 1

@@ -2,13 +2,17 @@
 # Path & File Settings
 # =========================
 # Base folder for your movies/TV shows
-BASE_DIR = r"\\192.168.1.5\Media\Movies\Bulgarian"
+BASE_DIR = r"\\192.168.1.5\Media\TV Shows"
 
 # Folder exclusion list (substrings or exact names)
 EXCLUDE_FOLDERS = [
+    # TV shows
     "Stargate Atlantis",
     "Stargate SG-1",
     "Stargate Universe",
+    "Ted Lasso (2020)",
+    "Arcane (2021)",
+    # Movies
     "Ratatouille",
     "Clueless (1995)",
     "Zootopia (2016)",
