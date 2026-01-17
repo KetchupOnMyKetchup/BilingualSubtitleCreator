@@ -1,9 +1,9 @@
 # 🎬 Bilingual Subtitle Project
 <img width="1145" height="632" alt="image" src="https://github.com/user-attachments/assets/374bb04e-7f51-459a-ac98-bd3d32e7ae66" />
 
-Are you learning a language and do you have a video file in a foreign language with no subtitles but you want dual subtitles in both the target language and your language? This project automates the process of **transcribing, cleaning, translating, and merging bilingual subtitles files** alongside video files on a media server and naming them the same as the video file with `.<language-shorthand>.srt` for example `bg.srt` appended (so that Jellyfin or similar can pick them up automatically). 
+Are you learning a language and do you have a video file in a foreign language with no subtitles but you want dual subtitles in both the target language and your language? This project automates the process of **transcribing, cleaning, translating, and merging bilingual subtitles files** alongside video files on a media server and naming them the same as the video file with `.<language-shorthand>.srt` for example `bg.srt` appended (so that Jellyfin or similar can pick them up automatically). You can also use it for singular sets of subtitles in one language whether you want the target language or for it to be translated as it outputs single language subtitle files as well.
 
-_Note: There are mistakes in the transcription/translation and this is far from a perfect, but I'd say it gets you ~80-90% of the way there for movies._
+_Note: There are mistakes in the transcription/translation and missing lines, and this is far from perfect, but I'd say it gets you ~90-95% of the way there for animated movies with clear diction and is good for the purpose of learning languages / understanding what is going on in the video._
 
 ---
 
@@ -50,17 +50,20 @@ If you installed PyTorch with CUDA, you can run this to verify the GPU is recogn
 The main workflow is orchestrated by `run.py`, which calls the following scripts in order _(note in the following examples: Primary video audio language is Bulgarian (BG) getting translated into the Secondary language English)_:
 
 1. **extract_vocals_to_wav.py**
+    - Optional step you can do if the audio is unclear and needs to be cleaned down, maybe if there is a lot of music or background noise. Usually not necessary though. 
+    - Use with boolean in [./config.py](main\config.py) called `USE_AUDIO_WAV`, `True` means to do this step. `False` means to use the movie file's audio directly.
     - Extracts the vocal track from each video file using Demucs (if background suppression is enabled) in order to remove background music and noises and get a clearer audio file of just speech.
-    - Produces a `_vocals.wav` file for each video, which is used for transcription.
+    - Produces a `_vocals.wav` file for each video, which is used for transcription which will be cleaned up at a later step (though this can be toggled with `KEEP_WAV` in [./config.py](main\config.py)).
 
 2. **transcribe.py**
     - Transcribes the audio (from the vocals `.wav` or directly from the video) into subtitles using OpenAI's Whisper or Faster-Whisper.
+    - Runs 2-3 transcriptions with different settings (accurate, balanced, coverage) to try to get as many subtitles as possible and to merge different takes into gaps.  Currently we are using balanced as the base subtitle, then fillling in gaps with accurate and we are not using coverage as that causes too many false positive subtitles when there is no speaking. 
     - Produces a raw Bulgarian subtitle file (`BG_*.srt`).
       - For example: [BG_Soul 2020.srt](<Samples/BG_Soul 2020.srt>)
 
 3. **cleanup_subs.py** (called automatically by the next step)
     - Cleans up the raw Bulgarian subtitles by removing tiny/fragmented lines and normalizing timing.
-    - Produces a cleaned Bulgarian subtitle file (`BG_clean_*.srt`).
+    - Produces a cleaned Bulgarian subtitle file (`BG_clean_*.srt`). 
       - For example: [BG_clean_Soul 2020.srt](<Samples/EN_clean_Soul 2020.srt>)
 
 4. **translate_subs.py**
@@ -74,14 +77,15 @@ The main workflow is orchestrated by `run.py`, which calls the following scripts
   Each script checks for existing output files and skips processing if the expected result already exists, making the workflow resumable and efficient.
 
 
-### Delete Existing SRT files and Run Test for Delete
+## Run Tests
+1. Install pre-reqs `pip install pytest`
+1. Run delete SRT tests `pytest test_delete_srts.py -v`
+1. Run all tests `python.exe -m pytest test_find_movies.py test_delete_srts.py -v --tb=short`
 
-#### Delete Existing SRT files
+## Delete Existing SRT files
+If you are testing the project and want to delete all the existing SRT files run this (I use this as I am improving this project and can get better versions of the SRT files):
 1. `./delete_srts.py`
 
-#### Run Test for Delete
-1. `pip install pytest`
-1. `pytest test_delete_srts.py -v`
 
 ### Final Product
 
